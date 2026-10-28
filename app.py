@@ -659,8 +659,6 @@ def _render_jobs(client, analysis_type):
 
     if st.button(t("refresh"), key=f"refresh_{analysis_type}"):
         st.rerun()
-
-=True)
     
     def page_players():
     st.markdown(f"<div class='nx-title'>{t('p2_title')}</div>", unsafe_allow_html=True)
