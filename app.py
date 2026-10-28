@@ -662,18 +662,18 @@ def _render_jobs(client, analysis_type):
 
 
 def page_players():
+    def page_players():
     st.markdown(f"<div class='nx-title'>{t('p2_title')}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='nx-sub'>{t('p2_sub')}</div>", unsafe_allow_html=True)
-
+    
     subscribe_block("player_pro", 25.00, 89.90, "pass_name", "p2_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
-
-    st.markdown(f"### {t('upload_title')}")
+    
     client = get_client()
-
-    up_file = st.file_uploader(t("upload_label"),
-                               type=["mp4", "avi", "mov"],
-                               key="p2_up")
+    
+    # --- 1. Video Uploader ---
+    st.markdown(f"### {t('upload_title')}")
+    up_file = st.file_uploader(t("upload_label"), type=["mp4", "avi", "mov"], key="p2_up")
     if up_file is not None:
         if st.button("⬆️ Upload & Queue Analysis", key="p2_upload_btn"):
             try:
@@ -682,8 +682,57 @@ def page_players():
                 st.rerun()
             except Exception as e:
                 st.error(f"Upload failed: {e}")
-
     _render_jobs(client, "player_hud")
+    
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    
+    # --- 2. Live AI Lens Tracking Console ---
+    st.markdown(f"### {t('p2_lens_title')}")
+    lens_on = st.toggle(t("p2_lens_toggle"), value=st.session_state.get("p2_lens_on", False), key="p2_lens_tgl")
+    st.session_state.p2_lens_on = lens_on
+    
+    if lens_on:
+        st.success(t("p2_lens_on"))
+        l1, l2, l3 = st.columns(3)
+        with l1:
+            st.markdown(metric(t("p2_fps"), "60.0", "primary"), unsafe_allow_html=True)
+        with l2:
+            st.markdown(metric(t("p2_conf"), "0.94", "amber"), unsafe_allow_html=True)
+        with l3:
+            st.markdown(metric(t("p2_entities"), "22", "primary"), unsafe_allow_html=True)
+            
+        rng = np.random.default_rng(3)
+        buf = pd.DataFrame(rng.random((40, 3)), columns=["Player A", "Player B", "Player C"])
+        st.line_chart(buf)
+    else:
+        st.info(t("p2_lens_off"))
+        
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    
+    # --- 3. Personal Performance HUD ---
+    st.markdown(f"### {t('p2_hud_title')}")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(metric(t("p2_speed"), "32.4 km/h", "primary"), unsafe_allow_html=True)
+    with c2:
+        st.markdown(metric(t("p2_pass"), "87.6%", "amber"), unsafe_allow_html=True)
+    with c3:
+        st.markdown(metric(t("p2_dist"), "10.4 km", "primary"), unsafe_allow_html=True)
+        
+    c4, c5, c6 = st.columns(3)
+    with c4:
+        st.markdown(metric(t("p2_sprints"), "28", "primary"), unsafe_allow_html=True)
+    with c5:
+        st.markdown(metric(t("p2_duels"), "61%", "amber"), unsafe_allow_html=True)
+    with c6:
+        st.markdown(metric("Rating", "8.3", "primary"), unsafe_allow_html=True)
+        
+    st.markdown(f"#### {t('p2_rating')}")
+    df_attr = pd.DataFrame({
+        "Attribute": [t("attr_drib"), t("attr_pass"), t("attr_shot"), t("attr_def"), t("attr_phys"), t("attr_vision")],
+        "Score": [86, 82, 74, 58, 79, 84],
+    }).set_index("Attribute")
+    st.bar_chart(df_attr)
 
 
 def page_academies():
