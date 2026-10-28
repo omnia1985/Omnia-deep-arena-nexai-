@@ -660,8 +660,8 @@ def _render_jobs(client, analysis_type):
     if st.button(t("refresh"), key=f"refresh_{analysis_type}"):
         st.rerun()
 
-
-def page_players():
+=True)
+    
     def page_players():
     st.markdown(f"<div class='nx-title'>{t('p2_title')}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='nx-sub'>{t('p2_sub')}</div>", unsafe_allow_html=True)
@@ -671,7 +671,6 @@ def page_players():
     
     client = get_client()
     
-    # --- 1. Video Uploader ---
     st.markdown(f"### {t('upload_title')}")
     up_file = st.file_uploader(t("upload_label"), type=["mp4", "avi", "mov"], key="p2_up")
     if up_file is not None:
@@ -686,7 +685,6 @@ def page_players():
     
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    # --- 2. Live AI Lens Tracking Console ---
     st.markdown(f"### {t('p2_lens_title')}")
     lens_on = st.toggle(t("p2_lens_toggle"), value=st.session_state.get("p2_lens_on", False), key="p2_lens_tgl")
     st.session_state.p2_lens_on = lens_on
@@ -709,7 +707,6 @@ def page_players():
         
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    # --- 3. Personal Performance HUD ---
     st.markdown(f"### {t('p2_hud_title')}")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -733,6 +730,7 @@ def page_players():
         "Score": [86, 82, 74, 58, 79, 84],
     }).set_index("Attribute")
     st.bar_chart(df_attr)
+
 
 
 def page_academies():
