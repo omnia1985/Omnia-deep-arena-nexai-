@@ -25,10 +25,16 @@ except ImportError:
 load_dotenv()
 st.set_page_config(page_title="Omnia DeepArena NexIA", page_icon="⚽", layout="wide", initial_sidebar_state="expanded")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
-FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY", "")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
+    FOOTBALL_API_KEY = st.secrets["FOOTBALL_API_KEY"]
+    STRIPE_SECRET_KEY = st.secrets["STRIPE_SECRET_KEY"]
+except Exception:
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+    FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY", "")
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 
 def get_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
