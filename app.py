@@ -389,11 +389,32 @@ def page_predictor():
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_sim')}")
-    client = get_client()
-    try: teams = client.table("teams").select("name,elo,attack,defense").execute().data or []
-    except Exception as e:
-        st.error(f"Failed to load teams: {e}")
-        teams = []
+    import requests
+    API_KEY = os.getenv("FOOTBALL_API_KEY", "")
+    teams = []
+    
+    # محاولة جلب البيانات الحقيقية من API
+    if API_KEY:
+        try:
+            headers = {'Authorization': f'Bearer {API_KEY}'}
+            response = requests.get("https://api.5dollarfootballapi.com/v1/teams", headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                teams_list = data.get('data', [])
+                for t in teams_list:
+                    if t.get('name'):
+                        teams.append({"name": t['name'], "elo": 1500, "attack": 1.5, "defense": 1.0})
+        except Exception:
+            pass 
+
+    # إذا فشل الـ API، نعود للأندية القديمة لكي لا تنهار الصفحة
+    if not teams:
+        client = get_client()
+        try: 
+            teams = client.table("teams").select("name,elo,attack,defense").execute().data or []
+        except Exception as e:
+            st.error(f"Failed to load teams: {e}")
+            teams = []
     if not teams:
         st.warning("No teams seeded. Run supabase_schema.sql.")
         return
