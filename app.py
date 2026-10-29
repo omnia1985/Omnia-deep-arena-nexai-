@@ -255,7 +255,7 @@ def real_player_props(xg_per90, xa_per90, card_prob_per90):
 def auth_page():
     st.markdown("<div class='nx-title'>⚡ Omnia DeepArena NexIA</div>", unsafe_allow_html=True)
     st.markdown("<div class='nx-sub'>Deep-Tech Sports Intelligence Platform</div>", unsafe_allow_html=True)  
- col_l, col_c, col_r = st.columns([1, 2, 1])
+    col_l, col_c, col_r = st.columns([1, 2, 1])
     with col_c:
         tabs = st.tabs([t("login_title"), t("signup_title")])
         with tabs[0]:
