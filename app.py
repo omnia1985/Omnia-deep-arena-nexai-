@@ -401,9 +401,9 @@ def page_predictor():
             if response.status_code == 200:
                 data = response.json()
                 teams_list = data.get('data', [])
-                for t in teams_list:
-                    if t.get('name'):
-                        teams.append({"name": t['name'], "elo": 1500, "attack": 1.5, "defense": 1.0})
+                for team in teams_list:
+                    if team.get('name'):
+                        teams.append({"name": team['name'], "elo": 1500, "attack": 1.5, "defense": 1.0})
         except Exception:
             pass 
 
