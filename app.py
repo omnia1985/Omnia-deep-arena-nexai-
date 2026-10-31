@@ -243,9 +243,14 @@ def metric(label, value, variant="primary"):
 
 def poisson_pmf(k: int, lam: float) -> float: return math.exp(-lam) * (lam ** k) / math.factorial(k)
 
-def real_match_simulation(home_attack, home_defense, away_attack, away_defense, home_advantage=0.15, n_sims=10000):
-    lam_home = math.exp(home_attack - away_defense + home_advantage)
-    lam_away = math.exp(away_attack - home_defense)
+def real_match_simulation(home_attack, home_defense, away_attack, away_defense, home_advantage=1.15, n_sims=10000):
+    league_avg = 1.45 
+    lam_home = (home_attack / league_avg) * (away_defense / league_avg) * league_avg * home_advantage
+    lam_away = (away_attack / league_avg) * (home_defense / league_avg) * league_avg
+    
+    lam_home = min(max(0.2, lam_home), 4.0)
+    lam_away = min(max(0.2, lam_away), 4.0)
+
     rng = np.random.default_rng()
     hg = rng.poisson(lam_home, n_sims)
     ag = rng.poisson(lam_away, n_sims)
