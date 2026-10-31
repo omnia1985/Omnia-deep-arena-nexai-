@@ -435,14 +435,21 @@ def page_predictor():
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
     
+    # 1. اختيار الدوري
+    leagues = {"PL": "Premier League (England)", "PD": "La Liga (Spain)", "SA": "Serie A (Italy)", "BL1": "Bundesliga (Germany)", "FL1": "Ligue 1 (France)"}
+    league_choice = st.selectbox("Select European League", list(leagues.keys()), format_func=lambda x: leagues[x])
+    
+    # خريطة لربط رموز الدوريات مع Odds API
+    odds_league_map = {"PL": "soccer_epl", "PD": "soccer_spain_la_liga", "SA": "soccer_italy_serie_a", "BL1": "soccer_germany_bundesliga", "FL1": "soccer_france_ligue_one"}
+
     @st.cache_data(ttl=3600) 
-    def fetch_all_data():
-        # 1. بيانات الفرق من football-data.org
+    def fetch_all_data(league_code):
+        # جلب ترتيب الدوري
         teams_data = []
         if FOOTBALL_API_KEY:
             headers = {'X-Auth-Token': FOOTBALL_API_KEY}
             try:
-                resp = requests.get("https://api.football-data.org/v4/competitions/PL/standings", headers=headers, timeout=10)
+                resp = requests.get(f"https://api.football-data.org/v4/competitions/{league_code}/standings", headers=headers, timeout=10)
                 if resp.status_code == 200:
                     data = resp.json()
                     standings = data.get('standings', [])
@@ -455,15 +462,17 @@ def page_predictor():
                                 "attack": round(row.get('goalsFor', 0) / played, 2),
                                 "defense": round(row.get('goalsAgainst', 0) / played, 2),
                                 "gf": row.get('goalsFor', 0), 
-                                "ga": row.get('goalsAgainst', 0)
+                                "ga": row.get('goalsAgainst', 0),
+                                "points": row.get('points', 0)
                             })
             except Exception: pass
-            
-        # 2. احتمالات المراهنات من The Odds API
+
+        # جلب أسعار المراهنات
         odds_data = {}
         if ODDS_API_KEY:
             try:
-                odds_url = f"https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?apiKey={ODDS_API_KEY}&regions=uk&markets=h2h"
+                sport_key = odds_league_map.get(league_code, "soccer_epl")
+                odds_url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds/?apiKey={ODDS_API_KEY}&regions=uk&markets=h2h"
                 resp = requests.get(odds_url, timeout=10)
                 if resp.status_code == 200:
                     odds_json = resp.json()
@@ -474,21 +483,18 @@ def page_predictor():
                         if bookmakers:
                             outcomes = bookmakers[0].get('markets', [{}])[0].get('outcomes', [])
                             odds_dict = {o['name']: o['price'] for o in outcomes}
-                            # تخزين احتمالات المباراة بناءً على اسم الفريقين
                             odds_data[f"{home} vs {away}"] = odds_dict
             except Exception: pass
 
-        # 3. إحصاءات اللاعبين من Big Balls Data
+        # جلب إحصاءات اللاعبين (Big Balls Data)
         players_data = []
         if BIGBALLS_API_KEY:
             try:
-                # جلب أفضل الهدافين في الدوري الإنجليزي (PL)
                 bbd_headers = {'Authorization': f'Bearer {BIGBALLS_API_KEY}'}
-                bbd_url = "https://api.bigballsdata.com/v1/players/topscorers?league=PL" # نقطة نهاية قياسية
+                bbd_url = f"https://api.bigballsdata.com/v1/players/topscorers?league={league_code}" 
                 resp = requests.get(bbd_url, headers=bbd_headers, timeout=10)
                 if resp.status_code == 200:
                     players_json = resp.json()
-                    # استخراج أول 5 لاعبين
                     for p in players_json.get('data', [])[:5]:
                         players_data.append({
                             "Player": p.get('name', 'Unknown'),
@@ -501,13 +507,21 @@ def page_predictor():
 
         return teams_data, odds_data, players_data
 
-    with st.spinner("Fetching Live Data (Teams, Odds, Players)..."):
-        teams, live_odds, top_players = fetch_all_data()
+    with st.spinner(f"Fetching Live {leagues[league_choice]} Data..."):
+        teams, live_odds, top_players = fetch_all_data(league_choice)
 
     if not teams:
-        st.error("Could not load real team data from Football-Data.org. Check API key.")
+        st.error("Could not load real team data. Please check FOOTBALL_API_KEY.")
         return
         
+    # 2. عرض جدول الترتيب
+    st.markdown(f"### 🏆 {leagues[league_choice]} Standings")
+    df_standings = pd.DataFrame([{"Team": t["name"], "Goals For": t["gf"], "Goals Against": t["ga"], "Points": t["points"]} for t in teams])
+    st.dataframe(df_standings, use_container_width=True, hide_index=True)
+
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    
+    # 3. اختيار المباراة
     st.markdown(f"### {t('p1_sim')}")
     names = [tm["name"] for tm in teams]
     c1, c2, c3 = st.columns([2, 2, 2])
@@ -524,7 +538,7 @@ def page_predictor():
     home = next(x for x in teams if x["name"] == home_name)
     away = next(x for x in teams if x["name"] == away_name)
     
-    # محرك Poisson
+    # 4. محرك Poisson
     if run or st.session_state.sim_result is None:
         with st.spinner("Running Real Monte-Carlo..."):
             st.session_state.sim_result = real_match_simulation(float(home["attack"]), float(home["defense"]), float(away["attack"]), float(away["defense"]), n_sims=10000)
@@ -539,29 +553,32 @@ def page_predictor():
         
     st.caption(f"{home_name} (xG {s['xg_home']}) vs {away_name} (xG {s['xg_away']}) · Over 2.5: {s['over_2_5']}% · BTTS: {s['btts']}%")
     
-    # عرض احتمالات المراهنات الحقيقية إن وجدت
+    # 5. أسعار المراهنات ومقارنتها
     odds_key = f"{home_name} vs {away_name}"
     if live_odds and odds_key in live_odds:
         o = live_odds[odds_key]
         st.info(f"💰 Live Market Odds (UK): {home_name} Win: {o.get(home_name, 'N/A')} | Draw: {o.get('Draw', 'N/A')} | {away_name} Win: {o.get(away_name, 'N/A')}")
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
     
+    st.markdown("<hr/>", unsafe_allow_html=True)
     with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
-        # مقارنة بصرية بين توقعنا واحتمالات السوق
-        df_comp = pd.DataFrame({
-            "Outcome": [t("win"), t("draw"), t("loss")],
-            "Model (%)": [s["win"], s["draw"], s["loss"]]
-        }).set_index("Outcome")
+        df_comp = pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "Model (%)": [s["win"], s["draw"], s["loss"]]}).set_index("Outcome")
         st.bar_chart(df_comp)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
+    with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
+        st.bar_chart(pd.DataFrame({"Metric": ["Goals Scored", "Attack Rating"], home_name: [home["gf"], home["attack"]], away_name: [away["gf"], away["attack"]]}).set_index("Metric"))
+    with st.expander(f"🛡️ Defensive Solidity: {home_name} vs {away_name}", expanded=False):
+        st.bar_chart(pd.DataFrame({"Metric": ["Goals Conceded", "Defense Rating"], home_name: [home["ga"], home["defense"]], away_name: [away["ga"], away["defense"]]}).set_index("Metric"))
+
+    # 6. جدول اللاعبين (لن نحذفه)
+    st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
+    st.caption("Real Player Stats from Big Balls Data")
     
     if top_players:
         st.dataframe(pd.DataFrame(top_players), use_container_width=True, hide_index=True)
     else:
-        st.info("Player stats from Big Balls Data are currently loading or unavailable.")
+        st.info("Player stats are currently updating or the Big Balls API endpoint needs verification.")
     
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border: 2px dashed #f59e0b; border-radius: 14px; padding: 20px; text-align: center; margin-top: 30px;'>
@@ -570,6 +587,7 @@ def page_predictor():
     </div>
     """, unsafe_allow_html=True)
     st.markdown(f"<div class='nx-disclaimer'>⚠ {t('p1_disclaimer')}</div>", unsafe_allow_html=True)
+        
 
 def _upload_video(client, file, kind, analysis_type):
     api = HfApi(token=os.getenv("HF_TOKEN"))
