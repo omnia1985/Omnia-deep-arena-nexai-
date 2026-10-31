@@ -8,6 +8,7 @@ import requests
 import numpy as np
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import stripe
 from dotenv import load_dotenv
 from supabase import create_client, Client
