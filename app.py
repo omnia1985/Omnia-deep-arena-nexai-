@@ -431,70 +431,81 @@ def page_predictor():
     st.markdown(f"<div class='nx-sub'>{t('p1_sub')}</div>", unsafe_allow_html=True)
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown(f"### {t('p1_sim')}")
     
     @st.cache_data(ttl=3600) 
-    def fetch_api_football_data():
-        if not FOOTBALL_API_KEY: return [], []
-        headers = {'x-apisports-key': FOOTBALL_API_KEY}
-        
-        # 1. جلب ترتيب الدوري الإنجليزي (معرف الدوري 39) للموسم الحالي 2026
-        # إذا لم يجد 2026 سيحاول 2025 تلقائياً
+    def fetch_all_data():
+        # 1. بيانات الفرق من football-data.org
         teams_data = []
-        for season in [2026, 2025, 2024]:
+        if FOOTBALL_API_KEY:
+            headers = {'X-Auth-Token': FOOTBALL_API_KEY}
             try:
-                url = f"https://v3.football.api-sports.io/standings?league=39&season={season}"
-                resp = requests.get(url, headers=headers, timeout=10)
+                resp = requests.get("https://api.football-data.org/v4/competitions/PL/standings", headers=headers, timeout=10)
                 if resp.status_code == 200:
                     data = resp.json()
-                    if data.get('response'):
-                        standings = data['response'][0]['league']['standings'][0]
-                        for row in standings:
-                            played = row['all']['played'] or 1
+                    standings = data.get('standings', [])
+                    if standings:
+                        table = standings[0].get('table', [])
+                        for row in table:
+                            played = row.get('playedGames', 1) or 1
                             teams_data.append({
-                                "name": row['team']['name'],
-                                "attack": round(row['all']['goals']['for'] / played, 2),
-                                "defense": round(row['all']['goals']['against'] / played, 2),
-                                "gf": row['all']['goals']['for'],
-                                "ga": row['all']['goals']['against']
+                                "name": row.get('team', {}).get('name', 'Unknown'),
+                                "attack": round(row.get('goalsFor', 0) / played, 2),
+                                "defense": round(row.get('goalsAgainst', 0) / played, 2),
+                                "gf": row.get('goalsFor', 0), 
+                                "ga": row.get('goalsAgainst', 0)
                             })
-                        break # إذا نجحنا في جلب الموسم، نخرج من الحلقة
-            except Exception: 
-                pass
-                
-        # 2. جلب الهدافين الحقيقيين (Player Props) من الدوري الإنجليزي
-        players_data = []
-        for season in [2026, 2025, 2024]:
+            except Exception: pass
+            
+        # 2. احتمالات المراهنات من The Odds API
+        odds_data = {}
+        if ODDS_API_KEY:
             try:
-                url = f"https://v3.football.api-sports.io/players/topscorers?league=39&season={season}"
-                resp = requests.get(url, headers=headers, timeout=10)
+                odds_url = f"https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?apiKey={ODDS_API_KEY}&regions=uk&markets=h2h"
+                resp = requests.get(odds_url, timeout=10)
                 if resp.status_code == 200:
-                    data = resp.json()
-                    if data.get('response'):
-                        for p in data['response'][:5]: # نأخذ أفضل 5 لاعبين
-                            stats = p['statistics'][0]
-                            goals = stats['goals']['total'] or 0
-                            shots = stats['shots']['on'] or 1
-                            players_data.append({
-                                "name": p['player']['name'],
-                                "team": stats['team']['name'],
-                                "goals": goals,
-                                "goal_pct": min(99.9, round((goals / max(1, shots)) * 100, 1)), # حساب احتمالية التسجيل بناءً على التسديدات الفعلية
-                                "shots": shots
-                            })
-                        break
-            except Exception:
-                pass
-                
-        return teams_data, players_data
+                    odds_json = resp.json()
+                    for match in odds_json:
+                        home = match.get('home_team')
+                        away = match.get('away_team')
+                        bookmakers = match.get('bookmakers', [])
+                        if bookmakers:
+                            outcomes = bookmakers[0].get('markets', [{}])[0].get('outcomes', [])
+                            odds_dict = {o['name']: o['price'] for o in outcomes}
+                            # تخزين احتمالات المباراة بناءً على اسم الفريقين
+                            odds_data[f"{home} vs {away}"] = odds_dict
+            except Exception: pass
 
-    with st.spinner("Loading real stats from API-Football..."):
-        teams, players = fetch_api_football_data()
+        # 3. إحصاءات اللاعبين من Big Balls Data
+        players_data = []
+        if BIGBALLS_API_KEY:
+            try:
+                # جلب أفضل الهدافين في الدوري الإنجليزي (PL)
+                bbd_headers = {'Authorization': f'Bearer {BIGBALLS_API_KEY}'}
+                bbd_url = "https://api.bigballsdata.com/v1/players/topscorers?league=PL" # نقطة نهاية قياسية
+                resp = requests.get(bbd_url, headers=bbd_headers, timeout=10)
+                if resp.status_code == 200:
+                    players_json = resp.json()
+                    # استخراج أول 5 لاعبين
+                    for p in players_json.get('data', [])[:5]:
+                        players_data.append({
+                            "Player": p.get('name', 'Unknown'),
+                            "Team": p.get('team', 'Unknown'),
+                            "Goals": p.get('goals', 0),
+                            "xG": p.get('xg', 0.0),
+                            "Shots": p.get('shots', 0)
+                        })
+            except Exception: pass
+
+        return teams_data, odds_data, players_data
+
+    with st.spinner("Fetching Live Data (Teams, Odds, Players)..."):
+        teams, live_odds, top_players = fetch_all_data()
 
     if not teams:
-        st.error("Could not load real data. Please check your API-Football key or request limits.")
+        st.error("Could not load real team data from Football-Data.org. Check API key.")
         return
         
+    st.markdown(f"### {t('p1_sim')}")
     names = [tm["name"] for tm in teams]
     c1, c2, c3 = st.columns([2, 2, 2])
     with c1: home_name = st.selectbox(t("team_a"), names, index=0, key="p1_home")
@@ -503,13 +514,16 @@ def page_predictor():
         st.write(""); st.write("")
         run = st.button(t("run_sim"), key="p1_run")
         
-    if home_name == away_name: st.warning("Pick two different teams."); return
+    if home_name == away_name: 
+        st.warning("Pick two different teams.")
+        return
         
     home = next(x for x in teams if x["name"] == home_name)
     away = next(x for x in teams if x["name"] == away_name)
     
+    # محرك Poisson
     if run or st.session_state.sim_result is None:
-        with st.spinner("Running real Monte-Carlo..."):
+        with st.spinner("Running Real Monte-Carlo..."):
             st.session_state.sim_result = real_match_simulation(float(home["attack"]), float(home["defense"]), float(away["attack"]), float(away["defense"]), n_sims=10000)
             
     if run: st.success(t("sim_done"))
@@ -522,32 +536,29 @@ def page_predictor():
         
     st.caption(f"{home_name} (xG {s['xg_home']}) vs {away_name} (xG {s['xg_away']}) · Over 2.5: {s['over_2_5']}% · BTTS: {s['btts']}%")
     
+    # عرض احتمالات المراهنات الحقيقية إن وجدت
+    odds_key = f"{home_name} vs {away_name}"
+    if live_odds and odds_key in live_odds:
+        o = live_odds[odds_key]
+        st.info(f"💰 Live Market Odds (UK): {home_name} Win: {o.get(home_name, 'N/A')} | Draw: {o.get('Draw', 'N/A')} | {away_name} Win: {o.get(away_name, 'N/A')}")
+
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown(f"### {t('p1_tac')}")
-    with st.expander(t("win") + " / " + t("draw") + " / " + t("loss"), expanded=True):
-        st.bar_chart(pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "%": [s["win"], s["draw"], s["loss"]]}).set_index("Outcome"))
-    with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
-        st.bar_chart(pd.DataFrame({"Metric": ["Goals Scored", "Attack Rating"], home_name: [home["gf"], home["attack"]], away_name: [away["gf"], away["attack"]]}).set_index("Metric"))
-    with st.expander(f"🛡️ Defensive Solidity: {home_name} vs {away_name}", expanded=False):
-        st.bar_chart(pd.DataFrame({"Metric": ["Goals Conceded", "Defense Rating"], home_name: [home["ga"], home["defense"]], away_name: [away["ga"], away["defense"]]}).set_index("Metric"))
+    
+    with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
+        # مقارنة بصرية بين توقعنا واحتمالات السوق
+        df_comp = pd.DataFrame({
+            "Outcome": [t("win"), t("draw"), t("loss")],
+            "Model (%)": [s["win"], s["draw"], s["loss"]]
+        }).set_index("Outcome")
+        st.bar_chart(df_comp)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
-    st.caption("Real API-Football Data — Top Scorers Stats")
     
-    if players:
-        rows = []
-        for p in players:
-            rows.append({
-                "Player": p["name"], 
-                "Team": p["team"],
-                "Goals (Season)": p["goals"],
-                "Shots on Target": p["shots"],
-                "Goal Conversion %": f"{p['goal_pct']}%"
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    if top_players:
+        st.dataframe(pd.DataFrame(top_players), use_container_width=True, hide_index=True)
     else:
-        st.info("Player stats are currently updating.")
+        st.info("Player stats from Big Balls Data are currently loading or unavailable.")
     
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border: 2px dashed #f59e0b; border-radius: 14px; padding: 20px; text-align: center; margin-top: 30px;'>
