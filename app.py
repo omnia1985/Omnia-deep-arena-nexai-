@@ -427,7 +427,6 @@ def page_billing():
                 st.error(f"Stripe Error: {e}")
 
 def page_predictor():
-def page_predictor():
     st.markdown(f"<div class='nx-title'>{t('p1_title')}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='nx-sub'>{t('p1_sub')}</div>", unsafe_allow_html=True)
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
