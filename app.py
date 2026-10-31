@@ -30,12 +30,15 @@ try:
     SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
     FOOTBALL_API_KEY = st.secrets["FOOTBALL_API_KEY"]
     STRIPE_SECRET_KEY = st.secrets["STRIPE_SECRET_KEY"]
+    BIGBALLS_API_KEY = st.secrets.get("BIGBALLS_API_KEY", "")
+    ODDS_API_KEY = st.secrets.get("ODDS_API_KEY", "")
 except Exception:
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
     FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY", "")
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-
+    BIGBALLS_API_KEY = os.getenv("BIGBALLS_API_KEY", "")
+    ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
 def get_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         st.error("⚠️ Missing SUPABASE keys in Secrets.")
