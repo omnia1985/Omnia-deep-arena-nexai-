@@ -558,26 +558,29 @@ def page_predictor():
         
     st.caption(f"{home_name} (xG {s['xg_home']}) vs {away_name} (xG {s['xg_away']}) · Over 2.5: {s['over_2_5']}% · BTTS: {s['btts']}%")
     
-    # 5. أسعار المراهنات ومقارنتها
+        # 5. أسعار المراهنات ومقارنتها
     odds_key = f"{home_name} vs {away_name}"
     if live_odds and odds_key in live_odds:
         o = live_odds[odds_key]
         st.info(f"💰 Live Market Odds (UK): {home_name} Win: {o.get(home_name, 'N/A')} | Draw: {o.get('Draw', 'N/A')} | {away_name} Win: {o.get(away_name, 'N/A')}")
     
     st.markdown("<hr/>", unsafe_allow_html=True)
-    with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
-        df_comp = pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "Model (%)": [s["win"], s["draw"], s["loss"]]}).set_index("Outcome")
-        st.bar_chart(df_comp)
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
-        st.bar_chart(pd.DataFrame({"Metric": ["Goals Scored", "Attack Rating"], home_name: [home["gf"], home["attack"]], away_name: [away["gf"], away["attack"]]}).set_index("Metric"))
+    
+    # الرسم البياني الأول (المصلح)
     with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
         df_comp = pd.DataFrame({
             "Outcome": [t("win"), t("draw"), t("loss")], 
             "Probability (%)": [s["win"], s["draw"], s["loss"]]
         })
         st.bar_chart(df_comp, x="Outcome", y="Probability (%)")
+
+    # الرسم البياني الثاني
+    with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
+        st.bar_chart(pd.DataFrame({"Metric": ["Goals Scored", "Attack Rating"], home_name: [home["gf"], home["attack"]], away_name: [away["gf"], away["attack"]]}).set_index("Metric"))
+        
+    with st.expander(f"🛡️ Defensive Solidity: {home_name} vs {away_name}", expanded=False):
+        st.bar_chart(pd.DataFrame({"Metric": ["Goals Conceded", "Defense Rating"], home_name: [home["ga"], home["defense"]], away_name: [away["ga"], away["defense"]]}).set_index("Metric"))
+
 
     # 6. جدول اللاعبين (لن نحذفه)
     st.markdown("<hr/>", unsafe_allow_html=True)
