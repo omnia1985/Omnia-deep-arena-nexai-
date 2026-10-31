@@ -427,6 +427,7 @@ def page_billing():
                 st.error(f"Stripe Error: {e}")
 
 def page_predictor():
+def page_predictor():
     st.markdown(f"<div class='nx-title'>{t('p1_title')}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='nx-sub'>{t('p1_sub')}</div>", unsafe_allow_html=True)
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
@@ -434,35 +435,65 @@ def page_predictor():
     st.markdown(f"### {t('p1_sim')}")
     
     @st.cache_data(ttl=3600) 
-    def fetch_real_top5_leagues():
-        if not FOOTBALL_API_KEY: return []
-        headers = {'Authorization': f'Bearer {FOOTBALL_API_KEY}'}
-        leagues = {"PL": "Premier League", "PD": "La Liga", "SA": "Serie A", "BL1": "Bundesliga", "FL1": "Ligue 1"}
-        all_teams = []
-        for code, league_name in leagues.items():
+    def fetch_api_football_data():
+        if not FOOTBALL_API_KEY: return [], []
+        headers = {'x-apisports-key': FOOTBALL_API_KEY}
+        
+        # 1. جلب ترتيب الدوري الإنجليزي (معرف الدوري 39) للموسم الحالي 2026
+        # إذا لم يجد 2026 سيحاول 2025 تلقائياً
+        teams_data = []
+        for season in [2026, 2025, 2024]:
             try:
-                resp = requests.get(f"https://api.5dollarfootballapi.com/competitions/{code}/standings", headers=headers, timeout=5)
+                url = f"https://v3.football.api-sports.io/standings?league=39&season={season}"
+                resp = requests.get(url, headers=headers, timeout=10)
                 if resp.status_code == 200:
                     data = resp.json()
-                    standings = data.get('data', {}).get('standings', [])
-                    if not standings: standings = data.get('standings', [])
-                    table = standings[0].get('table', []) if isinstance(standings, list) and standings else (standings.get('table', []) if isinstance(standings, dict) else [])
-                    for row in table:
-                        played = row.get('playedGames', 1) or 1
-                        all_teams.append({
-                            "name": f"{row.get('team', {}).get('name', 'Unknown')} ({league_name})",
-                            "attack": round(row.get('goalsFor', 0) / played, 2),
-                            "defense": round(row.get('goalsAgainst', 0) / played, 2),
-                            "gf": row.get('goalsFor', 0), "ga": row.get('goalsAgainst', 0)
-                        })
-            except Exception: pass
-        return all_teams
+                    if data.get('response'):
+                        standings = data['response'][0]['league']['standings'][0]
+                        for row in standings:
+                            played = row['all']['played'] or 1
+                            teams_data.append({
+                                "name": row['team']['name'],
+                                "attack": round(row['all']['goals']['for'] / played, 2),
+                                "defense": round(row['all']['goals']['against'] / played, 2),
+                                "gf": row['all']['goals']['for'],
+                                "ga": row['all']['goals']['against']
+                            })
+                        break # إذا نجحنا في جلب الموسم، نخرج من الحلقة
+            except Exception: 
+                pass
+                
+        # 2. جلب الهدافين الحقيقيين (Player Props) من الدوري الإنجليزي
+        players_data = []
+        for season in [2026, 2025, 2024]:
+            try:
+                url = f"https://v3.football.api-sports.io/players/topscorers?league=39&season={season}"
+                resp = requests.get(url, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get('response'):
+                        for p in data['response'][:5]: # نأخذ أفضل 5 لاعبين
+                            stats = p['statistics'][0]
+                            goals = stats['goals']['total'] or 0
+                            shots = stats['shots']['on'] or 1
+                            players_data.append({
+                                "name": p['player']['name'],
+                                "team": stats['team']['name'],
+                                "goals": goals,
+                                "goal_pct": min(99.9, round((goals / max(1, shots)) * 100, 1)), # حساب احتمالية التسجيل بناءً على التسديدات الفعلية
+                                "shots": shots
+                            })
+                        break
+            except Exception:
+                pass
+                
+        return teams_data, players_data
 
-    with st.spinner("Fetching live Top 5 European Leagues data..."):
-        teams = fetch_real_top5_leagues()
+    with st.spinner("Loading real stats from API-Football..."):
+        teams, players = fetch_api_football_data()
 
     if not teams:
-        st.error("⚠️ Could not load real data from API. Check FOOTBALL_API_KEY.")
+        st.error("Could not load real data. Please check your API-Football key or request limits.")
         return
         
     names = [tm["name"] for tm in teams]
@@ -497,19 +528,27 @@ def page_predictor():
     with st.expander(t("win") + " / " + t("draw") + " / " + t("loss"), expanded=True):
         st.bar_chart(pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "%": [s["win"], s["draw"], s["loss"]]}).set_index("Outcome"))
     with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
-        st.bar_chart(pd.DataFrame({"Metric": ["Goals Scored", "Attack Rating (Goals/Match)"], home_name: [home["gf"], home["attack"]], away_name: [away["gf"], away["attack"]]}).set_index("Metric"))
+        st.bar_chart(pd.DataFrame({"Metric": ["Goals Scored", "Attack Rating"], home_name: [home["gf"], home["attack"]], away_name: [away["gf"], away["attack"]]}).set_index("Metric"))
     with st.expander(f"🛡️ Defensive Solidity: {home_name} vs {away_name}", expanded=False):
-        st.bar_chart(pd.DataFrame({"Metric": ["Goals Conceded", "Defense Rating (Conceded/Match)"], home_name: [home["ga"], home["defense"]], away_name: [away["ga"], away["defense"]]}).set_index("Metric"))
+        st.bar_chart(pd.DataFrame({"Metric": ["Goals Conceded", "Defense Rating"], home_name: [home["ga"], home["defense"]], away_name: [away["ga"], away["defense"]]}).set_index("Metric"))
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
-    st.caption("Real Poisson PMF — Anytime Goalscorer = 1 − P(X = 0)")
-    props = [(f"{home_name} Striker", float(home["attack"]) * 0.4, 0.15, 0.1), (f"{home_name} Winger", float(home["attack"]) * 0.2, 0.35, 0.2), (f"{away_name} Striker", float(away["attack"]) * 0.4, 0.15, 0.1), (f"{away_name} Midfielder", float(away["attack"]) * 0.15, 0.25, 0.3)]
-    rows = []
-    for name, xg, xa, card in props:
-        p = real_player_props(xg, xa, card)
-        rows.append({"Player Profile": name, "Goal %": p["goal"], "Assist %": p["assist"], "Card %": p["card"], "SOT 2+ %": p["sot"]})
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.caption("Real API-Football Data — Top Scorers Stats")
+    
+    if players:
+        rows = []
+        for p in players:
+            rows.append({
+                "Player": p["name"], 
+                "Team": p["team"],
+                "Goals (Season)": p["goals"],
+                "Shots on Target": p["shots"],
+                "Goal Conversion %": f"{p['goal_pct']}%"
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    else:
+        st.info("Player stats are currently updating.")
     
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border: 2px dashed #f59e0b; border-radius: 14px; padding: 20px; text-align: center; margin-top: 30px;'>
