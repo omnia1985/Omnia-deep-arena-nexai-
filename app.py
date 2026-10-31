@@ -522,8 +522,8 @@ def page_predictor():
     # 2. عرض جدول الترتيب
     st.markdown(f"### 🏆 {leagues[league_choice]} Standings")
     df_standings = pd.DataFrame([{"Team": t["name"], "Goals For": t["gf"], "Goals Against": t["ga"], "Points": t["points"]} for t in teams])
-        import streamlit.components.v1 as components
-    components.html(f"""
+
+    components.v1.html(f"""
     <api-sports-widget data-type="standings"></api-sports-widget>
     <api-sports-widget data-type="config" data-key="{FOOTBALL_API_KEY}" data-sport="football" data-league="39" data-season="2026" data-theme="dark"></api-sports-widget>
     <script type="module" src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
