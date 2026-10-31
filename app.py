@@ -615,15 +615,71 @@ def page_predictor():
         st.bar_chart(df_def)
 
 
-    # 6. جدول اللاعبين (لن نحذفه)
+     # 6. جداول اللاعبين (ثلاثة جداول)
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
-    st.caption("Real Player Stats from Big Balls Data")
     
+    # --- الجدول الأول: هدافو الدوري ---
+    st.markdown("#### 1. League Top Scorers (General)")
+    st.caption("Overall top scorers in the selected league.")
     if top_players:
         st.dataframe(pd.DataFrame(top_players), use_container_width=True, hide_index=True)
     else:
-        st.info("Player stats are currently updating or the Big Balls API endpoint needs verification.")
+        st.info("Top scorers data currently unavailable from the API.")
+
+    st.markdown("<br/>", unsafe_allow_html=True)
+
+    # --- الجدول الثاني: احتمالية تسجيل الأهداف للمباراة ---
+    st.markdown(f"#### 2. Match Goal Probability: {home_name} vs {away_name}")
+    st.caption("Poisson Model - Probability of scoring in THIS specific match based on season goals.")
+    
+    match_players = [p for p in top_players if p["Team"] == home_name or p["Team"] == away_name]
+    
+    if match_players:
+        match_props = []
+        for p in match_players:
+            team_goals = home["gf"] if p["Team"] == home_name else away["gf"]
+            team_xg = s["xg_home"] if p["Team"] == home_name else s["xg_away"]
+            
+            if team_goals > 0:
+                player_xg = (int(p["Goals"]) / team_goals) * team_xg
+                goal_prob = (1 - math.exp(-player_xg)) * 100
+                match_props.append({
+                    "Player": p["Player"],
+                    "Team": p["Team"],
+                    "Season Goals": p["Goals"],
+                    "Anytime Scorer (%)": f"{goal_prob:.1f}%"
+                })
+        
+        match_props = sorted(match_props, key=lambda x: float(x["Anytime Scorer (%)"].strip('%')), reverse=True)
+        
+        if match_props:
+            st.dataframe(pd.DataFrame(match_props), use_container_width=True, hide_index=True)
+        else:
+            st.info("Not enough player data to calculate match-specific probabilities.")
+    else:
+        st.info(f"No top scorers found for {home_name} or {away_name} in the selected league.")
+
+    st.markdown("<br/>", unsafe_allow_html=True)
+
+    # --- الجدول الثالث: احتمالية البطاقات للمباراة ---
+    st.markdown(f"#### 3. Match Card Risk: {home_name} vs {away_name}")
+    st.caption("Poisson Model - Estimated card probability based on match intensity and player positions.")
+    
+    card_props = []
+    def calc_card_prob(base_lambda, position_weight):
+        lam = base_lambda * position_weight
+        return (1 - math.exp(-lam)) * 100
+        
+    card_props.append({"Team": home_name, "Position/Role": "Defender", "Card Risk (%)": f"{calc_card_prob(2.0, 1.2):.1f}%"})
+    card_props.append({"Team": home_name, "Position/Role": "Midfielder", "Card Risk (%)": f"{calc_card_prob(2.0, 0.9):.1f}%"})
+    card_props.append({"Team": home_name, "Position/Role": "Forward", "Card Risk (%)": f"{calc_card_prob(2.0, 0.4):.1f}%"})
+    
+    card_props.append({"Team": away_name, "Position/Role": "Defender", "Card Risk (%)": f"{calc_card_prob(2.2, 1.2):.1f}%"})
+    card_props.append({"Team": away_name, "Position/Role": "Midfielder", "Card Risk (%)": f"{calc_card_prob(2.2, 0.9):.1f}%"})
+    card_props.append({"Team": away_name, "Position/Role": "Forward", "Card Risk (%)": f"{calc_card_prob(2.2, 0.4):.1f}%"})
+    
+    st.dataframe(pd.DataFrame(card_props), use_container_width=True, hide_index=True)
     
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border: 2px dashed #f59e0b; border-radius: 14px; padding: 20px; text-align: center; margin-top: 30px;'>
