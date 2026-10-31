@@ -615,24 +615,25 @@ def page_predictor():
         st.bar_chart(df_def)
 
 
-     # 6. جداول اللاعبين (ثلاثة جداول)
+    # 6. جداول اللاعبين
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
     
     # --- الجدول الأول: هدافو الدوري ---
-    st.markdown("#### 1. League Top Scorers (General)")
-    st.caption("Overall top scorers in the selected league.")
+    st.markdown("#### 1. League Top Scorers")
+    st.caption("Real data from the API for the current season.")
     if top_players:
         st.dataframe(pd.DataFrame(top_players), use_container_width=True, hide_index=True)
     else:
-        st.info("Top scorers data currently unavailable from the API.")
+        st.info("Top scorers data currently unavailable.")
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
     # --- الجدول الثاني: احتمالية تسجيل الأهداف للمباراة ---
     st.markdown(f"#### 2. Match Goal Probability: {home_name} vs {away_name}")
-    st.caption("Poisson Model - Probability of scoring in THIS specific match based on season goals.")
+    st.caption("Poisson Model - Probability of scoring in THIS specific match.")
     
+    # فلترة اللاعبين ليكونوا فقط من الفريقين المختارين
     match_players = [p for p in top_players if p["Team"] == home_name or p["Team"] == away_name]
     
     if match_players:
@@ -645,39 +646,35 @@ def page_predictor():
                 player_xg = (int(p["Goals"]) / team_goals) * team_xg
                 goal_prob = (1 - math.exp(-player_xg)) * 100
                 match_props.append({
-                    "Player": p["Player"],
+                    "Player Name": p["Player"],
                     "Team": p["Team"],
                     "Season Goals": p["Goals"],
                     "Anytime Scorer (%)": f"{goal_prob:.1f}%"
                 })
         
-        match_props = sorted(match_props, key=lambda x: float(x["Anytime Scorer (%)"].strip('%')), reverse=True)
-        
         if match_props:
+            match_props = sorted(match_props, key=lambda x: float(x["Anytime Scorer (%)"].strip('%')), reverse=True)
             st.dataframe(pd.DataFrame(match_props), use_container_width=True, hide_index=True)
         else:
-            st.info("Not enough player data to calculate match-specific probabilities.")
+            st.info("Not enough data to calculate for these players.")
     else:
-        st.info(f"No top scorers found for {home_name} or {away_name} in the selected league.")
+        st.info(f"No top scorers found for {home_name} or {away_name} in the top 10 list.")
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    # --- الجدول الثالث: احتمالية البطاقات للمباراة ---
-    st.markdown(f"#### 3. Match Card Risk: {home_name} vs {away_name}")
-    st.caption("Poisson Model - Estimated card probability based on match intensity and player positions.")
+    # --- الجدول الثالث: احتمالية البطاقات (على مستوى الفريق) ---
+    st.markdown(f"#### 3. Team Card Risk: {home_name} vs {away_name}")
+    st.caption("Estimated team card probability based on match intensity.")
     
-    card_props = []
-    def calc_card_prob(base_lambda, position_weight):
-        lam = base_lambda * position_weight
+    # حساب احتمالية حصول الفريق على بطاقة (متوسط الدوري ~ 2 بطاقات للمباراة)
+    # نستخدم Poisson مع لامبدا 2.0 للمضيف و 2.3 للضيف
+    def calc_team_card_prob(lam):
         return (1 - math.exp(-lam)) * 100
-        
-    card_props.append({"Team": home_name, "Position/Role": "Defender", "Card Risk (%)": f"{calc_card_prob(2.0, 1.2):.1f}%"})
-    card_props.append({"Team": home_name, "Position/Role": "Midfielder", "Card Risk (%)": f"{calc_card_prob(2.0, 0.9):.1f}%"})
-    card_props.append({"Team": home_name, "Position/Role": "Forward", "Card Risk (%)": f"{calc_card_prob(2.0, 0.4):.1f}%"})
-    
-    card_props.append({"Team": away_name, "Position/Role": "Defender", "Card Risk (%)": f"{calc_card_prob(2.2, 1.2):.1f}%"})
-    card_props.append({"Team": away_name, "Position/Role": "Midfielder", "Card Risk (%)": f"{calc_card_prob(2.2, 0.9):.1f}%"})
-    card_props.append({"Team": away_name, "Position/Role": "Forward", "Card Risk (%)": f"{calc_card_prob(2.2, 0.4):.1f}%"})
+
+    card_props = [
+        {"Team": home_name, "Expected Team Cards": "2.0", "Probability of Getting a Card (%)": f"{calc_team_card_prob(2.0):.1f}%"},
+        {"Team": away_name, "Expected Team Cards": "2.3", "Probability of Getting a Card (%)": f"{calc_team_card_prob(2.3):.1f}%"}
+    ]
     
     st.dataframe(pd.DataFrame(card_props), use_container_width=True, hide_index=True)
     
