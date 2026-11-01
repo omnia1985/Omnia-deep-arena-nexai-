@@ -435,23 +435,25 @@ def page_billing():
             except Exception as e:
                 st.error(f"Stripe Error: {e}")
 
-def page_predictor():
+ def page_predictor():
     st.markdown(f"<div class='nx-title'>{t('p1_title')}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='nx-sub'>{t('p1_sub')}</div>", unsafe_allow_html=True)
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    # 1. اختيار الدوري
-    leagues = {"PL": "Premier League (England)", "PD": "La Liga (Spain)", "SA": "Serie A (Italy)", "BL1": "Bundesliga (Germany)", "FL1": "Ligue 1 (France)"}
+    # 1. القاموس الشامل للدوريات (31)
+    leagues = {
+        "PL": "Premier League (England)", "PLU18": "Premier League U18 (England)", "NL": "National League (England)", "NLNS": "National League North/South (England)", "L1": "League One (England)", "CHAMP": "EFL Championship (England)", "L2": "League Two (England)", "PRL": "Premier Reserve League (England)", "EFLT": "EFL Trophy (England)", "NPL": "Northern Premier League (England)", "PRL2": "Premier Reserve League 2 (England)", "CS": "Community Shield (England)", "FAT": "FA Trophy (England)", "LALIGA": "La Liga (Spain)", "SEGUNDA": "Segunda División (Spain)", "BUNDES": "Bundesliga (Germany)", "BUNDES2": "2. Bundesliga (Germany)", "LIGUE1": "Ligue 1 (France)", "LIGUE2": "Ligue 2 (France)", "SERIEA": "Serie A (Italy)", "SERIEB": "Serie B (Italy)", "SCOT": "Scottish Premiership", "NIRE": "Premiership Northern Ireland", "UCL": "Champions League", "UEL": "Europa League", "UECL": "Europa Conference League", "EURO": "European Championship", "UNLA": "UEFA Nations League A", "UNLB": "UEFA Nations League B", "UNLC": "UEFA Nations League C", "UNLD": "UEFA Nations League D"
+    }
     
+    # 2. اختيار الدوري
+    league_choice = st.selectbox("Select Tournament", list(leagues.keys()), format_func=lambda x: leagues[x])
     
-    # خريطة لربط رموز الدوريات مع Odds API
-    odds_league_map = {"PL": "soccer_epl", "PD": "soccer_spain_la_liga", "SA": "soccer_italy_serie_a", "BL1": "soccer_germany_bundesliga", "FL1": "soccer_france_ligue_one"}
-
+    # 3. دالة جلب البيانات
     @st.cache_data(ttl=3600) 
     def fetch_all_data(league_code):
-        # جلب ترتيب الدوري
         teams_data = []
+        # (كود جلب البيانات من football-data.org)
         if FOOTBALL_API_KEY:
             headers = {'X-Auth-Token': FOOTBALL_API_KEY}
             try:
@@ -473,7 +475,7 @@ def page_predictor():
                             })
             except Exception: pass
 
-        # جلب أسعار المراهنات
+        # (كود جلب الاحتمالات)
         odds_data = {}
         if ODDS_API_KEY:
             try:
@@ -492,7 +494,7 @@ def page_predictor():
                             odds_data[f"{home} vs {away}"] = odds_dict
             except Exception: pass
 
-        # جلب إحصاءات اللاعبين (Big Balls Data)
+        # (كود جلب اللاعبين)
         players_data = []
         if BIGBALLS_API_KEY:
             try:
@@ -503,66 +505,22 @@ def page_predictor():
                     players_json = resp.json()
                     for p in players_json.get('data', [])[:5]:
                         players_data.append({
-                            "Player": p.get('name', 'Unknown'),
-                            "Team": p.get('team', 'Unknown'),
-                            "Goals": p.get('goals', 0),
-                            "xG": p.get('xg', 0.0),
-                            "Shots": p.get('shots', 0)
+                            "Player": p.get('name', 'Unknown'), "Team": p.get('team', 'Unknown'),
+                            "Goals": p.get('goals', 0), "xG": p.get('xg', 0.0), "Shots": p.get('shots', 0)
                         })
             except Exception: pass
 
         return teams_data, odds_data, players_data
 
-
+    # 4. تشغيل جلب البيانات
     with st.spinner(f"Fetching Live {leagues[league_choice]} Data..."):
         teams, live_odds, top_players = fetch_all_data(league_choice)
-    
-        
 
     if not teams:
-        st.error("Could not load real team data. Please check FOOTBALL_API_KEY.")
+        st.error("Could not load real team data. Please check API keys.")
         return
         
-        # 1. اختيار الدوري (31 مسابقة)
-    leagues = {
-        "PL": "Premier League (England)",
-        "PLU18": "Premier League U18 (England)",
-        "NL": "National League (England)",
-        "NLNS": "National League North/South (England)",
-        "L1": "League One (England)",
-        "CHAMP": "EFL Championship (England)",
-        "L2": "League Two (England)",
-        "PRL": "Premier Reserve League (England)",
-        "EFLT": "EFL Trophy (England)",
-        "NPL": "Northern Premier League (England)",
-        "PRL2": "Premier Reserve League 2 (England)",
-        "CS": "Community Shield (England)",
-        "FAT": "FA Trophy (England)",
-        "LALIGA": "La Liga (Spain)",
-        "SEGUNDA": "Segunda División (Spain)",
-        "BUNDES": "Bundesliga (Germany)",
-        "BUNDES2": "2. Bundesliga (Germany)",
-        "LIGUE1": "Ligue 1 (France)",
-        "LIGUE2": "Ligue 2 (France)",
-        "SERIEA": "Serie A (Italy)",
-        "SERIEB": "Serie B (Italy)",
-        "SCOT": "Scottish Premiership",
-        "NIRE": "Premiership Northern Ireland",
-        "UCL": "Champions League",
-        "UEL": "Europa League",
-        "UECL": "Europa Conference League",
-        "EURO": "European Championship",
-        "UNLA": "UEFA Nations League A",
-        "UNLB": "UEFA Nations League B",
-        "UNLC": "UEFA Nations League C",
-        "UNLD": "UEFA Nations League D"
-    }
-    
-    league_choice = st.selectbox("Select Tournament", list(leagues.keys()), format_func=lambda x: leagues[x])
-
-    # 2. عرض جدول الترتيب
-    st.markdown(f"### 🏆 {leagues[league_choice]} Standings")
-    
+    # 5. قاموس الودجات (31)
     league_widgets = {
         "PL": """<div id="widget-kpt3mvxjrhkw" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232265abf1fa71a672159ec?widgetId=kpt3mvxjrhkw&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
         "PLU18": """<div id="widget-fuzemvxq14oh" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/623225f2a2303b43bc269a36?widgetId=fuzemvxq14oh&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
@@ -601,7 +559,8 @@ def page_predictor():
     components.html(selected_widget, height=700, scrolling=True)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
-    # 3. اختيار المباراة
+    
+    # 6. اختيار المباراة
     st.markdown(f"### {t('p1_sim')}")
     names = [tm["name"] for tm in teams]
     c1, c2, c3 = st.columns([2, 2, 2])
@@ -611,14 +570,11 @@ def page_predictor():
         st.write(""); st.write("")
         run = st.button(t("run_sim"), key="p1_run")
         
-    if home_name == away_name: 
-        st.warning("Pick two different teams.")
-        return
+    if home_name == away_name: st.warning("Pick two different teams."); return
         
     home = next(x for x in teams if x["name"] == home_name)
     away = next(x for x in teams if x["name"] == away_name)
     
-    # 4. محرك Poisson
     if run or st.session_state.sim_result is None:
         with st.spinner("Running Real Monte-Carlo..."):
             st.session_state.sim_result = real_match_simulation(float(home["attack"]), float(home["defense"]), float(away["attack"]), float(away["defense"]), n_sims=10000)
@@ -633,124 +589,54 @@ def page_predictor():
         
     st.caption(f"{home_name} (xG {s['xg_home']}) vs {away_name} (xG {s['xg_away']}) · Over 2.5: {s['over_2_5']}% · BTTS: {s['btts']}%")
     
-        # 5. أسعار المراهنات ومقارنتها
-    odds_key = f"{home_name} vs {away_name}"
-    if live_odds and odds_key in live_odds:
-        o = live_odds[odds_key]
-        st.info(f"💰 Live Market Odds (UK): {home_name} Win: {o.get(home_name, 'N/A')} | Draw: {o.get('Draw', 'N/A')} | {away_name} Win: {o.get(away_name, 'N/A')}")
-    
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-        # 5. أسعار المراهنات ومقارنتها
-    odds_key = f"{home_name} vs {away_name}"
-    if live_odds and odds_key in live_odds:
-        o = live_odds[odds_key]
-        st.info(f"💰 Live Market Odds (UK): {home_name} Win: {o.get(home_name, 'N/A')} | Draw: {o.get('Draw', 'N/A')} | {away_name} Win: {o.get(away_name, 'N/A')}")
-    
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    
-    # الرسم البياني الأول: مقارنة توقعنا مع السوق
+    # 7. الرسوم البيانية
     with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
-        df_comp = pd.DataFrame({
-            "Outcome": [t("win"), t("draw"), t("loss")], 
-            "Probability (%)": [s["win"], s["draw"], s["loss"]]
-        })
+        df_comp = pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "Probability (%)": [s["win"], s["draw"], s["loss"]]})
         st.bar_chart(df_comp, x="Outcome", y="Probability (%)")
 
-    # الرسم البياني الثاني: تحليل الهجوم (مفصول ليكون احترافياً)
     with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
         st.markdown("**Goals Scored**")
-        df_goals = pd.DataFrame({
-            "Team": [home_name, away_name],
-            "Goals": [home["gf"], away["gf"]]
-        }).set_index("Team")
-        st.bar_chart(df_goals)
-
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Goals": [home["gf"], away["gf"]]}).set_index("Team"))
         st.markdown("**Attack Rating (Goals/Match)**")
-        df_att = pd.DataFrame({
-            "Team": [home_name, away_name],
-            "Rating": [home["attack"], away["attack"]]
-        }).set_index("Team")
-        st.bar_chart(df_att)
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Rating": [home["attack"], away["attack"]]}).set_index("Team"))
 
-    # الرسم البياني الثالث: تحليل الدفاع (مفصول ليكون احترافياً)
     with st.expander(f"🛡️ Defensive Solidity: {home_name} vs {away_name}", expanded=False):
         st.markdown("**Goals Conceded**")
-        df_conc = pd.DataFrame({
-            "Team": [home_name, away_name],
-            "Conceded": [home["ga"], away["ga"]]
-        }).set_index("Team")
-        st.bar_chart(df_conc)
-
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Conceded": [home["ga"], away["ga"]]}).set_index("Team"))
         st.markdown("**Defense Rating (Conceded/Match)**")
-        df_def = pd.DataFrame({
-            "Team": [home_name, away_name],
-            "Rating": [home["defense"], away["defense"]]
-        }).set_index("Team")
-        st.bar_chart(df_def)
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Rating": [home["defense"], away["defense"]]}).set_index("Team"))
 
-
-    # 6. جداول اللاعبين
+    # 8. جداول اللاعبين
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
     
-    # --- الجدول الأول: هدافو الدوري ---
-    st.markdown("#### 1. League Top Scorers")
-    st.caption("Real data from the API for the current season.")
     if top_players:
-        st.dataframe(pd.DataFrame(top_players), use_container_width=True, hide_index=True)
-    else:
-        st.info("Top scorers data currently unavailable.")
+        st.markdown("#### 1. League Top Scorers")
+        st.dataframe(pd.DataFrame(top_players[:5]), use_container_width=True, hide_index=True)
 
-    st.markdown("<br/>", unsafe_allow_html=True)
-
-    # --- الجدول الثاني: احتمالية تسجيل الأهداف للمباراة ---
-    st.markdown(f"#### 2. Match Goal Probability: {home_name} vs {away_name}")
-    st.caption("Poisson Model - Probability of scoring in THIS specific match.")
-    
-    # فلترة اللاعبين ليكونوا فقط من الفريقين المختارين
     match_players = [p for p in top_players if p["Team"] == home_name or p["Team"] == away_name]
-    
     if match_players:
+        st.markdown(f"#### 2. Match Goal Probability: {home_name} vs {away_name}")
         match_props = []
         for p in match_players:
             team_goals = home["gf"] if p["Team"] == home_name else away["gf"]
             team_xg = s["xg_home"] if p["Team"] == home_name else s["xg_away"]
-            
             if team_goals > 0:
                 player_xg = (int(p["Goals"]) / team_goals) * team_xg
                 goal_prob = (1 - math.exp(-player_xg)) * 100
-                match_props.append({
-                    "Player Name": p["Player"],
-                    "Team": p["Team"],
-                    "Season Goals": p["Goals"],
-                    "Anytime Scorer (%)": f"{goal_prob:.1f}%"
-                })
-        
+                match_props.append({"Player Name": p["Player"], "Team": p["Team"], "Season Goals": p["Goals"], "Anytime Scorer (%)": f"{goal_prob:.1f}%"})
         if match_props:
             match_props = sorted(match_props, key=lambda x: float(x["Anytime Scorer (%)"].strip('%')), reverse=True)
             st.dataframe(pd.DataFrame(match_props), use_container_width=True, hide_index=True)
-        else:
-            st.info("Not enough data to calculate for these players.")
-    else:
-        st.info(f"No top scorers found for {home_name} or {away_name} in the top 10 list.")
 
-    st.markdown("<br/>", unsafe_allow_html=True)
-
-    # --- الجدول الثالث: احتمالية البطاقات (على مستوى الفريق) ---
     st.markdown(f"#### 3. Team Card Risk: {home_name} vs {away_name}")
-    st.caption("Estimated team card probability based on match intensity.")
-    
-    # حساب احتمالية حصول الفريق على بطاقة (متوسط الدوري ~ 2 بطاقات للمباراة)
-    # نستخدم Poisson مع لامبدا 2.0 للمضيف و 2.3 للضيف
-    def calc_team_card_prob(lam):
-        return (1 - math.exp(-lam)) * 100
-
+    def calc_team_card_prob(lam): return (1 - math.exp(-lam)) * 100
     card_props = [
         {"Team": home_name, "Expected Team Cards": "2.0", "Probability of Getting a Card (%)": f"{calc_team_card_prob(2.0):.1f}%"},
         {"Team": away_name, "Expected Team Cards": "2.3", "Probability of Getting a Card (%)": f"{calc_team_card_prob(2.3):.1f}%"}
     ]
-    
     st.dataframe(pd.DataFrame(card_props), use_container_width=True, hide_index=True)
     
     st.markdown(f"""
