@@ -443,7 +443,7 @@ def page_predictor():
     
     # 1. اختيار الدوري
     leagues = {"PL": "Premier League (England)", "PD": "La Liga (Spain)", "SA": "Serie A (Italy)", "BL1": "Bundesliga (Germany)", "FL1": "Ligue 1 (France)"}
-    league_choice = st.selectbox("Select European League", list(leagues.keys()), format_func=lambda x: leagues[x])
+    
     
     # خريطة لربط رموز الدوريات مع Odds API
     odds_league_map = {"PL": "soccer_epl", "PD": "soccer_spain_la_liga", "SA": "soccer_italy_serie_a", "BL1": "soccer_germany_bundesliga", "FL1": "soccer_france_ligue_one"}
