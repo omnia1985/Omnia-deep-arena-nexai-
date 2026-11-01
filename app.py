@@ -441,19 +441,16 @@ def page_billing():
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    # 1. القاموس الشامل للدوريات (31)
+    # 1. قاموس الدوريات (31 مسابقة)
     leagues = {
         "PL": "Premier League (England)", "PLU18": "Premier League U18 (England)", "NL": "National League (England)", "NLNS": "National League North/South (England)", "L1": "League One (England)", "CHAMP": "EFL Championship (England)", "L2": "League Two (England)", "PRL": "Premier Reserve League (England)", "EFLT": "EFL Trophy (England)", "NPL": "Northern Premier League (England)", "PRL2": "Premier Reserve League 2 (England)", "CS": "Community Shield (England)", "FAT": "FA Trophy (England)", "LALIGA": "La Liga (Spain)", "SEGUNDA": "Segunda División (Spain)", "BUNDES": "Bundesliga (Germany)", "BUNDES2": "2. Bundesliga (Germany)", "LIGUE1": "Ligue 1 (France)", "LIGUE2": "Ligue 2 (France)", "SERIEA": "Serie A (Italy)", "SERIEB": "Serie B (Italy)", "SCOT": "Scottish Premiership", "NIRE": "Premiership Northern Ireland", "UCL": "Champions League", "UEL": "Europa League", "UECL": "Europa Conference League", "EURO": "European Championship", "UNLA": "UEFA Nations League A", "UNLB": "UEFA Nations League B", "UNLC": "UEFA Nations League C", "UNLD": "UEFA Nations League D"
     }
     
-    # 2. اختيار الدوري
     league_choice = st.selectbox("Select Tournament", list(leagues.keys()), format_func=lambda x: leagues[x])
     
-    # 3. دالة جلب البيانات
     @st.cache_data(ttl=3600) 
     def fetch_all_data(league_code):
         teams_data = []
-        # (كود جلب البيانات من football-data.org)
         if FOOTBALL_API_KEY:
             headers = {'X-Auth-Token': FOOTBALL_API_KEY}
             try:
@@ -475,7 +472,6 @@ def page_billing():
                             })
             except Exception: pass
 
-        # (كود جلب الاحتمالات)
         odds_data = {}
         if ODDS_API_KEY:
             try:
@@ -494,7 +490,6 @@ def page_billing():
                             odds_data[f"{home} vs {away}"] = odds_dict
             except Exception: pass
 
-        # (كود جلب اللاعبين)
         players_data = []
         if BIGBALLS_API_KEY:
             try:
@@ -512,7 +507,6 @@ def page_billing():
 
         return teams_data, odds_data, players_data
 
-    # 4. تشغيل جلب البيانات
     with st.spinner(f"Fetching Live {leagues[league_choice]} Data..."):
         teams, live_odds, top_players = fetch_all_data(league_choice)
 
@@ -520,7 +514,8 @@ def page_billing():
         st.error("Could not load real team data. Please check API keys.")
         return
         
-    # 5. قاموس الودجات (31)
+    st.markdown(f"### 🏆 {leagues[league_choice]} Standings")
+    
     league_widgets = {
         "PL": """<div id="widget-kpt3mvxjrhkw" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232265abf1fa71a672159ec?widgetId=kpt3mvxjrhkw&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
         "PLU18": """<div id="widget-fuzemvxq14oh" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/623225f2a2303b43bc269a36?widgetId=fuzemvxq14oh&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
@@ -560,7 +555,6 @@ def page_billing():
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    # 6. اختيار المباراة
     st.markdown(f"### {t('p1_sim')}")
     names = [tm["name"] for tm in teams]
     c1, c2, c3 = st.columns([2, 2, 2])
@@ -591,7 +585,6 @@ def page_billing():
     
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    # 7. الرسوم البيانية
     with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
         df_comp = pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "Probability (%)": [s["win"], s["draw"], s["loss"]]})
         st.bar_chart(df_comp, x="Outcome", y="Probability (%)")
@@ -608,7 +601,6 @@ def page_billing():
         st.markdown("**Defense Rating (Conceded/Match)**")
         st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Rating": [home["defense"], away["defense"]]}).set_index("Team"))
 
-    # 8. جداول اللاعبين
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown(f"### {t('p1_props')}")
     
