@@ -526,7 +526,7 @@ def page_predictor():
 
     components.html(f"""
     <api-sports-widget data-type="standings"></api-sports-widget>
-    <api-sports-widget data-type="config" data-key="{FOOTBALL_API_KEY}" data-sport="football" data-league="39" data-season="2026" data-theme="dark"></api-sports-widget>
+    <api-sports-widget data-type="config" data-key="{FOOTBALL_API_KEY}" data-sport="football" data-league="39" data-season="2023" data-theme="dark"></api-sports-widget>
     <script type="module" src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
     """, height=600)
 
