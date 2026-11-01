@@ -512,12 +512,12 @@ def page_predictor():
             except Exception: pass
 
         return teams_data, odds_data, players_data
-    league_choice = st.selectbox("Select Tournament", list(leagues.keys()), format_func=lambda x: leagues[x])
+
 
     with st.spinner(f"Fetching Live {leagues[league_choice]} Data..."):
         teams, live_odds, top_players = fetch_all_data(league_choice)
-    with st.spinner(f"Fetching Live {leagues[league_choice]} Data..."):
-        teams, live_odds, top_players = fetch_all_data(league_choice)
+    
+        
 
     if not teams:
         st.error("Could not load real team data. Please check FOOTBALL_API_KEY.")
