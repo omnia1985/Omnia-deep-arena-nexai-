@@ -524,11 +524,10 @@ def page_predictor():
     st.markdown(f"### 🏆 {leagues[league_choice]} Standings")
     df_standings = pd.DataFrame([{"Team": t["name"], "Goals For": t["gf"], "Goals Against": t["ga"], "Points": t["points"]} for t in teams])
 
-    components.html(f"""
-    <api-sports-widget data-type="standings"></api-sports-widget>
-    <api-sports-widget data-type="config" data-key="{FOOTBALL_API_KEY}" data-sport="football" data-league="39" data-season="2023" data-theme="dark"></api-sports-widget>
-    <script type="module" src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
-    """, height=600)
+    widget_code = """
+    <div id="widget-kpt3mvxjrhkw" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232265abf1fa71a672159ec?widgetId=kpt3mvxjrhkw&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>
+    """
+    components.html(widget_code, height=700, scrolling=True)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     
