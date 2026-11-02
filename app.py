@@ -553,8 +553,9 @@ def page_predictor():
                         players_data.append({
                             "Player": p.get('player', {}).get('name', 'Unknown'), 
                             "Team": p.get('team', {}).get('name', 'Unknown'), 
-                            "Goals": p.get('goals', 0), 
-                            "Assists": p.get('assists', 0),
+                            "Goals": p.get('goals') or 0,
+                            "Assists": p.get('assists') or 0,
+                            
                             "xG": p.get('penalties', 0) # Using penalties as placeholder if xG not available
                         })
             except Exception: pass
