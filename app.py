@@ -440,31 +440,227 @@ def page_predictor():
     subscribe_block("analyst_pro", 19.99, 69.90, "nav_p1", "p1_sub")
     st.markdown("<hr/>", unsafe_allow_html=True)
     
+    # --- 1. قسم وثيقة التكهنات الأسبوعية (VIP) ---
+    client = get_client()
+    is_admin = (st.session_state.user_email == "alibejaoui981@gmail.com")
+    
+    st.markdown("### 📑 Weekly VIP Predictions (Document)")
+    if is_admin:
+        st.info("👑 Admin Area: Upload the weekly picks document here.")
+        uploaded_doc = st.file_uploader("Upload Weekly Picks (PDF or Image)", type=["pdf", "png", "jpg", "jpeg"])
+        if uploaded_doc is not None:
+            if st.button("Upload Document for Subscribers"):
+                try:
+                    ext = uploaded_doc.name.split('.')[-1].lower()
+                    file_path = f"latest_picks.{ext}"
+                    bytes_data = uploaded_doc.getvalue()
+                    client.storage.from_("Weekly_picks").upload(path=file_path, file=bytes_data, file_options={"content-type": uploaded_doc.type, "upsert": "true"})
+                    st.success("Document uploaded successfully! Subscribers can now download it.")
+                except Exception as e:
+                    st.error(f"Upload failed: {e}")
+    else:
+        st.markdown("""
+        <div class='nx-card' style='border-left:4px solid #f59e0b;'>
+            <div class='nx-card-title' style='color:#f59e0b;'>Premium Insights</div>
+            <div class='nx-card-body'>Download our expert's weekly picks and analysis to get a complete overview before you place your bets.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        try:
+            res = client.storage.from_("Weekly_picks").get_public_url("latest_picks.pdf")
+            st.markdown(f"[⬇️ Download Latest Weekly Picks (PDF)]({res})", unsafe_allow_html=True)
+        except Exception:
+            st.warning("Weekly predictions document is currently being updated. Check back soon!")
+            
+    st.markdown("<hr/>", unsafe_allow_html=True)
+
+    # --- 2. القاموس الشامل للـ 31 مسابقة ---
     leagues = {
-        "PL": "Premier League (England)",
-        "LALIGA": "La Liga (Spain)",
-        "SERIEA": "Serie A (Italy)",
-        "BUNDES": "Bundesliga (Germany)",
-        "LIGUE1": "Ligue 1 (France)"
+        "PL": "Premier League (England)", "PLU18": "Premier League U18 (England)", "NL": "National League (England)", "NLNS": "National League North/South (England)", "L1": "League One (England)", "CHAMP": "EFL Championship (England)", "L2": "League Two (England)", "PRL": "Premier Reserve League (England)", "EFLT": "EFL Trophy (England)", "NPL": "Northern Premier League (England)", "PRL2": "Premier Reserve League 2 (England)", "CS": "Community Shield (England)", "FAT": "FA Trophy (England)", "LALIGA": "La Liga (Spain)", "SEGUNDA": "Segunda División (Spain)", "BUNDES": "Bundesliga (Germany)", "BUNDES2": "2. Bundesliga (Germany)", "LIGUE1": "Ligue 1 (France)", "LIGUE2": "Ligue 2 (France)", "SERIEA": "Serie A (Italy)", "SERIEB": "Serie B (Italy)", "SCOT": "Scottish Premiership", "NIRE": "Premiership Northern Ireland", "UCL": "Champions League", "UEL": "Europa League", "UECL": "Europa Conference League", "EURO": "European Championship", "UNLA": "UEFA Nations League A", "UNLB": "UEFA Nations League B", "UNLC": "UEFA Nations League C", "UNLD": "UEFA Nations League D"
     }
-    
+    odds_map = {"PL": "soccer_epl", "LALIGA": "soccer_spain_la_liga", "SERIEA": "soccer_italy_serie_a", "BUNDES": "soccer_germany_bundesliga", "LIGUE1": "soccer_france_ligue_one"}
+
     league_choice = st.selectbox("Select Tournament", list(leagues.keys()), format_func=lambda x: leagues[x])
-    
     st.markdown(f"### 🏆 {leagues[league_choice]} Standings")
     
+    # --- 3. قاموس الودجات الشامل (31 جدول) ---
     league_widgets = {
         "PL": """<div id="widget-kpt3mvxjrhkw" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232265abf1fa71a672159ec?widgetId=kpt3mvxjrhkw&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "PLU18": """<div id="widget-fuzemvxq14oh" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/623225f2a2303b43bc269a36?widgetId=fuzemvxq14oh&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "NL": """<div id="widget-se9emvxq2x2m" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322c8cd714c907fc319494?widgetId=se9emvxq2x2m&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "NLNS": """<div id="widget-n3hxmvxq4ehe" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322674bf1fa71a67215cae?widgetId=n3hxmvxq4ehe&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "L1": """<div id="widget-227mmvxq6qbi" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322c24ab744d39ef6504b6?widgetId=227mmvxq6qbi&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "CHAMP": """<div id="widget-odmjmvxq8a4q" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/623226651944015a9f657040?widgetId=odmjmvxq8a4q&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "L2": """<div id="widget-7uhsmvxqb472" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322c2ecc0dbb0b6a59901e?widgetId=7uhsmvxqb472&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "PRL": """<div id="widget-4ft6mvxqdbuj" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/623234b2bb7db45d83354b60?widgetId=4ft6mvxqdbuj&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "EFLT": """<div id="widget-msxcmvxqf4f2" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322ded42a89f316f4698ca?widgetId=msxcmvxqf4f2&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "NPL": """<div id="widget-hp82mvxqh4n0" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232332a1641c07a88637e04?widgetId=hp82mvxqh4n0&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "PRL2": """<div id="widget-je0lmvxqjijd" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62323777fca985211e0b1572?widgetId=je0lmvxqjijd&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "CS": """<div id="widget-bjawmvxqllhv" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62327c6e98b2e367f650e480?widgetId=bjawmvxqllhv&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "FAT": """<div id="widget-e85umvxqniho" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232364b21ca23319c621490?widgetId=e85umvxqniho&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
         "LALIGA": """<div id="widget-rxnhmvxqrezh" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322c053617da0b83221cc6?widgetId=rxnhmvxqrezh&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
-        "SERIEA": """<div id="widget-w564mvxr63tl" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322b827aee66235a2be718?widgetId=w564mvxr63tl&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "SEGUNDA": """<div id="widget-n7khmvxqu66p" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322dbd5663b730e06fb124?widgetId=n7khmvxqu66p&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
         "BUNDES": """<div id="widget-38memvxqwycr" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62321f50f7016c22d3650732?widgetId=38memvxqwycr&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
-        "LIGUE1": """<div id="widget-t18gmvxr2rfd" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322b4efd209951602c9096?widgetId=t18gmvxr2rfd&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>"""
+        "BUNDES2": """<div id="widget-a7t1mvxqzpsb" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322df59c514d45285517b6?widgetId=a7t1mvxqzpsb&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "LIGUE1": """<div id="widget-t18gmvxr2rfd" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322b4efd209951602c9096?widgetId=t18gmvxr2rfd&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "LIGUE2": """<div id="widget-d7memvxr4ldc" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322c51fa018d03db020b1e?widgetId=d7memvxr4ldc&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "SERIEA": """<div id="widget-w564mvxr63tl" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322b827aee66235a2be718?widgetId=w564mvxr63tl&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "SERIEB": """<div id="widget-kx2amvxr8xxy" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62321ed77200b25ca50e49d6?widgetId=kx2amvxr8xxy&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "SCOT": """<div id="widget-zny9mvxrap4d" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322ba3946b336c466ab6f2?widgetId=zny9mvxrap4d&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "NIRE": """<div id="widget-zbrgmvxrcxuq" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322ce38fd98d1a724b9bb4?widgetId=zbrgmvxrcxuq&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UCL": """<div id="widget-ddwsmvxretcj" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232267fbf1fa71a67215dfc?widgetId=ddwsmvxretcj&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UEL": """<div id="widget-3hfpmvxrgiih" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62322bf0ea44793ec978b7a6?widgetId=3hfpmvxrgiih&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UECL": """<div id="widget-nwjgmvxrhnfm" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232378fe960277cec5c28b0?widgetId=nwjgmvxrhnfm&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "EURO": """<div id="widget-hi39mvxrjsw0" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/62327c5b7bf6106c72572a30?widgetId=hi39mvxrjsw0&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UNLA": """<div id="widget-udatmvxrmwiq" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232371247e10a66b322d10c?widgetId=udatmvxrmwiq&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UNLB": """<div id="widget-b3vjmvxrrf30" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232371547e10a66b322d154?widgetId=b3vjmvxrrf30&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UNLC": """<div id="widget-b6eimvxrtd0m" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232371847e10a66b322d18e?widgetId=b6eimvxrtd0m&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>""",
+        "UNLD": """<div id="widget-co7emvxruu2m" class="scoreaxis-widget" style="width: auto;height: auto;font-size: 14px;background-color: #ffffff;color: #141416;border: 1px solid;border-color: #ecf1f7;overflow: auto;"><script src="https://widgets.scoreaxis.com/api/football/league-table/6232371d4af7705e65585562?widgetId=co7emvxruu2m&lang=en&teamLogo=1&tableLines=0&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=1&noFollowLinks=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%23ffffff&textColor=%23141416&linkColor=%23141416&borderColor=%23ecf1f7&tabColor=%23f3f8fd" async></script><div class="widget-main-link" style="padding: 6px 12px;font-weight: 500;">Live data by <a href="https://www.scoreaxis.com/" style="color: inherit;">Scoreaxis</a></div></div>"""
     }
     
     selected_widget = league_widgets.get(league_choice, league_widgets["PL"])
-    components.html(selected_widget, height=700, scrolling=True)
+    components.html(selected_widget, height=650, scrolling=True)
     
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.success("✅ The standings tables are working perfectly! The prediction engine will be added next.")
+    st.markdown(f"### {t('p1_sim')}")
+    
+    # --- 4. جلب البيانات من API ---
+    @st.cache_data(ttl=3600) 
+    def fetch_all_data(league_code):
+        teams_data, odds_data, players_data = [], {}, []
+        if FOOTBALL_API_KEY:
+            try:
+                resp = requests.get(f"https://api.football-data.org/v4/competitions/{league_code}/standings", headers={'X-Auth-Token': FOOTBALL_API_KEY}, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    standings = data.get('standings', [])
+                    if standings:
+                        for row in standings[0].get('table', []):
+                            played = row.get('playedGames', 1) or 1
+                            teams_data.append({
+                                "name": row.get('team', {}).get('name', 'Unknown'),
+                                "attack": round(row.get('goalsFor', 0) / played, 2),
+                                "defense": round(row.get('goalsAgainst', 0) / played, 2),
+                                "gf": row.get('goalsFor', 0), "ga": row.get('goalsAgainst', 0)
+                            })
+            except Exception: pass
+            
+            # جلب أفضل الهدافين وصناع الأهداف من football-data.org
+            try:
+                scorers_resp = requests.get(f"https://api.football-data.org/v4/competitions/{league_code}/scorers?limit=10", headers={'X-Auth-Token': FOOTBALL_API_KEY}, timeout=10)
+                if scorers_resp.status_code == 200:
+                    scorers_data = scorers_resp.json().get('scorers', [])
+                    for p in scorers_data:
+                        players_data.append({
+                            "Player": p.get('player', {}).get('name', 'Unknown'), 
+                            "Team": p.get('team', {}).get('name', 'Unknown'), 
+                            "Goals": p.get('goals', 0), 
+                            "Assists": p.get('assists', 0),
+                            "xG": p.get('penalties', 0) # Using penalties as placeholder if xG not available
+                        })
+            except Exception: pass
+            
+        if ODDS_API_KEY:
+            try:
+                sport_key = odds_map.get(league_code, "soccer_epl")
+                resp = requests.get(f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds/?apiKey={ODDS_API_KEY}&regions=uk&markets=h2h", timeout=10)
+                if resp.status_code == 200:
+                    for match in resp.json():
+                        bms = match.get('bookmakers', [])
+                        if bms:
+                            outcomes = bms[0].get('markets', [{}])[0].get('outcomes', [])
+                            odds_data[f"{match.get('home_team')} vs {match.get('away_team')}"] = {o['name']: o['price'] for o in outcomes}
+            except Exception: pass
+            
+        return teams_data, odds_data, players_data
+
+    with st.spinner(f"Fetching predictions for {leagues[league_choice]}..."):
+        teams, live_odds, top_players = fetch_all_data(league_choice)
+        
+    if not teams:
+        st.info("⚠️ Standings table is working! But prediction data requires valid API keys for this specific league.")
+        return
+        
+    # --- 5. محاكي المباريات والرسوم ---
+    names = [tm["name"] for tm in teams]
+    c1, c2, c3 = st.columns([2, 2, 2])
+    with c1: home_name = st.selectbox(t("team_a"), names, index=0, key="p1_home")
+    with c2: away_name = st.selectbox(t("team_b"), names, index=min(1, len(names) - 1), key="p1_away")
+    with c3:
+        st.write(""); st.write("")
+        run = st.button(t("run_sim"), key="p1_run")
+        
+    if home_name == away_name: 
+        st.warning("Pick two different teams.")
+        return
+        
+    home = next(x for x in teams if x["name"] == home_name)
+    away = next(x for x in teams if x["name"] == away_name)
+    
+    if run or st.session_state.sim_result is None:
+        with st.spinner("Running Real Monte-Carlo..."):
+            st.session_state.sim_result = real_match_simulation(float(home["attack"]), float(home["defense"]), float(away["attack"]), float(away["defense"]), n_sims=10000)
+            
+    if run: st.success(t("sim_done"))
+    
+    s = st.session_state.sim_result
+    m1, m2, m3 = st.columns(3)
+    with m1: st.markdown(metric(t("win"), f"{s['win']}%"), unsafe_allow_html=True); st.progress(min(max(s["win"] / 100, 0), 1))
+    with m2: st.markdown(metric(t("draw"), f"{s['draw']}%", "amber"), unsafe_allow_html=True); st.progress(min(max(s["draw"] / 100, 0), 1))
+    with m3: st.markdown(metric(t("loss"), f"{s['loss']}%", "red"), unsafe_allow_html=True); st.progress(min(max(s["loss"] / 100, 0), 1))
+        
+    st.caption(f"{home_name} (xG {s['xg_home']}) vs {away_name} (xG {s['xg_away']}) · Over 2.5: {s['over_2_5']}% · BTTS: {s['btts']}%")
+    
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    
+    with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
+        st.bar_chart(pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "Probability (%)": [s["win"], s["draw"], s["loss"]]}), x="Outcome", y="Probability (%)")
+
+    with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
+        st.markdown("**Goals Scored**")
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Goals": [home["gf"], away["gf"]]}).set_index("Team"))
+        st.markdown("**Attack Rating (Goals/Match)**")
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Rating": [home["attack"], away["attack"]]}).set_index("Team"))
+
+    with st.expander(f"🛡️ Defensive Solidity: {home_name} vs {away_name}", expanded=False):
+        st.markdown("**Goals Conceded**")
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Conceded": [home["ga"], away["ga"]]}).set_index("Team"))
+        st.markdown("**Defense Rating (Conceded/Match)**")
+        st.bar_chart(pd.DataFrame({"Team": [home_name, away_name], "Rating": [home["defense"], away["defense"]]}).set_index("Team"))
+
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    st.markdown(f"### {t('p1_props')}")
+    
+    # --- 6. جداول Top 5 ---
+    if top_players:
+        # فصل اللاعبين للهدافين والصناع
+        sorted_by_goals = sorted(top_players, key=lambda x: x["Goals"], reverse=True)[:5]
+        sorted_by_assists = sorted(top_players, key=lambda x: x["Assists"], reverse=True)[:5]
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### ⚽ Top 5 Goalscorers")
+            st.dataframe(pd.DataFrame(sorted_by_goals)[["Player", "Team", "Goals"]], use_container_width=True, hide_index=True)
+        with col2:
+            st.markdown("#### 🎯 Top 5 Assists")
+            st.dataframe(pd.DataFrame(sorted_by_assists)[["Player", "Team", "Assists"]], use_container_width=True, hide_index=True)
+
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    st.markdown(f"#### Team Card Risk: {home_name} vs {away_name}")
+    def calc_team_card_prob(lam): return (1 - math.exp(-lam)) * 100
+    card_props = [
+        {"Team": home_name, "Expected Team Cards": "2.0", "Probability of Getting a Card (%)": f"{calc_team_card_prob(2.0):.1f}%"},
+        {"Team": away_name, "Expected Team Cards": "2.3", "Probability of Getting a Card (%)": f"{calc_team_card_prob(2.3):.1f}%"}
+    ]
+    st.dataframe(pd.DataFrame(card_props), use_container_width=True, hide_index=True)
+    
+    st.markdown(f"""
+    <div style='background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border: 2px dashed #f59e0b; border-radius: 14px; padding: 20px; text-align: center; margin-top: 30px;'>
+        <h3 style='color: #f59e0b; margin-top: 0;'>{t('cross_sell_title')}</h3>
+        <p style='color: #cbd5e1; font-size: 1.05rem;'>{t('cross_sell_desc')}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown(f"<div class='nx-disclaimer'>⚠ {t('p1_disclaimer')}</div>", unsafe_allow_html=True)
+     
 def _upload_video(client, file, kind, analysis_type):
     api = HfApi(token=os.getenv("HF_TOKEN"))
     repo_id = os.getenv("HF_REPO_ID")
