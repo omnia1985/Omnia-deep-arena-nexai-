@@ -531,7 +531,7 @@ def page_predictor():
         teams_data, odds_data, players_data = [], {}, []
         if FOOTBALL_API_KEY:
             try:
-                resp = requests.get(f"https://api.football-data.org/v4/competitions/{league_code}/standings", headers={'X-Auth-Token': FOOTBALL_API_KEY}, timeout=10)
+                resp = requests.get(f"https://api.football-data.org/v4/competitions/{api_code}/standings", headers={'X-Auth-Token': FOOTBALL_API_KEY}, timeout=10)
                 if resp.status_code == 200:
                     data = resp.json()
                     standings = data.get('standings', [])
@@ -548,7 +548,7 @@ def page_predictor():
             
             # جلب أفضل الهدافين وصناع الأهداف من football-data.org
             try:
-                scorers_resp = requests.get(f"https://api.football-data.org/v4/competitions/{league_code}/scorers?limit=10", headers={'X-Auth-Token': FOOTBALL_API_KEY}, timeout=10)
+                scorers_resp = requests.get(f"https://api.football-data.org/v4/competitions/{api_code}/scorers?limit=10", headers={'X-Auth-Token': FOOTBALL_API_KEY}, timeout=10)
                 if scorers_resp.status_code == 200:
                     scorers_data = scorers_resp.json().get('scorers', [])
                     for p in scorers_data:
