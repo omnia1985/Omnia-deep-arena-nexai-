@@ -525,7 +525,9 @@ def page_predictor():
     
     # --- 4. جلب البيانات من API ---
     @st.cache_data(ttl=3600) 
-    def fetch_all_data(league_code):
+    def fetch_all_data(league_code):        
+        api_league_map = {"PL": "PL", "CHAMP": "ELC", "LALIGA": "PD", "SEGUNDA": "SD", "BUNDES": "BL1", "BUNDES2": "BL2", "LIGUE1": "FL1", "LIGUE2": "FL2", "SERIEA": "SA", "SERIEB": "SB", "UCL": "CL"}
+        api_code = api_league_map.get(league_code, league_code)
         teams_data, odds_data, players_data = [], {}, []
         if FOOTBALL_API_KEY:
             try:
