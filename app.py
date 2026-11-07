@@ -665,14 +665,56 @@ def page_predictor():
     st.markdown(f"<div class='nx-disclaimer'>⚠ {t('p1_disclaimer')}</div>", unsafe_allow_html=True)
      
 def _upload_video(client, file, kind, analysis_type):
-    api = HfApi(token=os.getenv("HF_TOKEN"))
+    from huggingface_hub import HfApi
+    import io
+    import uuid
+    
+    # 1. إعداد الاتصال مع تمرير المفتاح بشكل صريح
+    hf_token = os.getenv("HF_TOKEN")
     repo_id = os.getenv("HF_REPO_ID")
+    
+    if not hf_token or not repo_id:
+        raise Exception("Missing HF_TOKEN or HF_REPO_ID in Secrets.")
+    
+    api = HfApi(token=hf_token)
+    
+    # 2. التأكد من أن المستودع موجود (وإنشاؤه إذا لزم الأمر)
+    try:
+        api.repo_info(repo_id=repo_id, repo_type="model")
+    except Exception:
+        # إذا لم يكن موجوداً، قم بإنشائه
+        api.create_repo(repo_id=repo_id, repo_type="model", private=False, exist_ok=True)
+    
+    # 3. تجهيز الملف للرفع
     ext = file.name.split(".")[-1].lower()
-    path = f"{st.session_state.user_id}/{uuid.uuid4().hex}.{ext}"
+    path_in_repo = f"{st.session_state.user_id}/{uuid.uuid4().hex}.{ext}"
     bytes_data = file.getvalue()
-    api.upload_file(path_or_fileobj=io.BytesIO(bytes_data), path_in_repo=path, repo_id=repo_id, repo_type="model")
-    up = client.table("uploads").insert({"user_id": st.session_state.user_id, "storage_path": path, "file_name": file.name, "file_size": len(bytes_data), "kind": kind}).execute().data[0]
-    client.table("analyses").insert({"upload_id": up["id"], "user_id": st.session_state.user_id, "type": analysis_type, "status": "queued"}).execute()
+    
+    # 4. الرفع مع تمرير المفتاح بشكل صريح
+    api.upload_file(
+        path_or_fileobj=io.BytesIO(bytes_data),
+        path_in_repo=path_in_repo,
+        repo_id=repo_id,
+        repo_type="model",
+        token=hf_token  # تمرير المفتاح صراحةً
+    )
+    
+    # 5. حفظ البيانات في Supabase
+    up = client.table("uploads").insert({
+        "user_id": st.session_state.user_id, 
+        "storage_path": path_in_repo, 
+        "file_name": file.name, 
+        "file_size": len(bytes_data), 
+        "kind": kind
+    }).execute().data[0]
+    
+    client.table("analyses").insert({
+        "upload_id": up["id"], 
+        "user_id": st.session_state.user_id, 
+        "type": analysis_type, 
+        "status": "queued"
+    }).execute()
+    
     return up
 
 def _render_jobs(client, analysis_type):
