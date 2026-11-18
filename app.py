@@ -776,8 +776,20 @@ def _render_jobs(client, analysis_type):
                 </div>
                 """, unsafe_allow_html=True)
                 
-            elif analysis_type == "player_hud":
-                st.json(result) # الاحتفاظ ببيانات اللاعب كـ JSON في صفحة اللاعبين
+                   elif analysis_type == "player_hud":
+                st.markdown(f"""
+                <div class='nx-card' style='border-left:4px solid #00ffcc;'>
+                    <div class='nx-card-title' style='color:#00ffcc;'>Player Performance Summary</div>
+                    <div class='nx-card-body' style='font-size: 0.95rem; line-height: 1.8;'>
+                        <b>Top Speed:</b> {result.get('speed', 'N/A')} &nbsp;|&nbsp; 
+                        <b>Distance:</b> {result.get('distance', 'N/A')} &nbsp;|&nbsp; 
+                        <b>Sprints:</b> {result.get('sprints', 'N/A')}<br>
+                        <b>Pass Accuracy:</b> {result.get('pass_accuracy', 'N/A')} &nbsp;|&nbsp; 
+                        <b>Duels Won:</b> {result.get('duels', 'N/A')} &nbsp;|&nbsp; 
+                        <b>Overall Rating:</b> {result.get('rating', 'N/A')}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
     if st.button(t("refresh"), key=f"refresh_{analysis_type}"): 
         st.rerun()
