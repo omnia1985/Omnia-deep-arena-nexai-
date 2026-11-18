@@ -718,17 +718,69 @@ def _upload_video(client, file, kind, analysis_type):
     return up
 
 def _render_jobs(client, analysis_type):
-    try: rows = (client.table("analyses").select("*").eq("user_id", st.session_state.user_id).eq("type", analysis_type).order("created_at", desc=True).limit(10).execute().data or [])
-    except Exception: rows = []
-    if not rows: return
+    try: 
+        rows = (client.table("analyses").select("*").eq("user_id", st.session_state.user_id).eq("type", analysis_type).order("created_at", desc=True).limit(10).execute().data or [])
+    except Exception: 
+        rows = []
+        
+    if not rows: 
+        return
+        
     st.markdown(f"#### {t('analysis_status')}")
+    
     for j in rows:
         status = j["status"]
+        result = j.get("result") or {}
+        
+        # تخطي البيانات القديمة التي لا تنتمي لهذا القسم
+        if status == "completed":
+            if analysis_type == "opponent_report" and "weaknesses" not in result: continue
+            if analysis_type == "error_report" and "positioning_errors" not in result: continue
+            if analysis_type == "player_hud" and "speed" not in result: continue
+
         badge = {"queued": t("status_queued"), "processing": t("status_processing"), "completed": t("status_completed"), "failed": t("status_failed")}.get(status, status)
         color = {"queued": "#f59e0b", "processing": "#00ffcc", "completed": "#00ffcc", "failed": "#ef4444"}.get(status, "#94a3b8")
+        
         st.markdown(f"<div class='nx-card' style='border-left:4px solid {color};'><div class='nx-card-title' style='color:{color};'>{badge}</div><div class='nx-card-body'>Job <code>{j['id'][:8]}</code> · {j['created_at'][:19]}</div></div>", unsafe_allow_html=True)
-        if status == "completed" and j.get("result"): st.json(j["result"])
-    if st.button(t("refresh"), key=f"refresh_{analysis_type}"): st.rerun()
+        
+        if status == "completed" and result:
+            if analysis_type == "opponent_report":
+                st.markdown(f"""
+                <div class='nx-card' style='border-left:4px solid #ef4444;'>
+                    <div class='nx-card-title' style='color:#ef4444;'>Opponent Weaknesses</div>
+                    <div class='nx-card-body'>{result.get('weaknesses', '')}</div>
+                </div>
+                <div class='nx-card' style='border-left:4px solid #f59e0b;'>
+                    <div class='nx-card-title' style='color:#f59e0b;'>Counter-Attack Gaps</div>
+                    <div class='nx-card-body'>{result.get('counter_gaps', '')}</div>
+                </div>
+                <div class='nx-card' style='border-left:4px solid #00ffcc;'>
+                    <div class='nx-card-title' style='color:#00ffcc;'>Remontada Strategy</div>
+                    <div class='nx-card-body'>{result.get('remontada', '')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            elif analysis_type == "error_report":
+                st.markdown(f"""
+                <div class='nx-card' style='border-left:4px solid #ef4444;'>
+                    <div class='nx-card-title' style='color:#ef4444;'>Positioning Errors</div>
+                    <div class='nx-card-body'>{result.get('positioning_errors', '')}</div>
+                </div>
+                <div class='nx-card' style='border-left:4px solid #f59e0b;'>
+                    <div class='nx-card-title' style='color:#f59e0b;'>Duels Won %</div>
+                    <div class='nx-card-body'>{result.get('duels_won', '')}</div>
+                </div>
+                <div class='nx-card' style='border-left:4px solid #ef4444;'>
+                    <div class='nx-card-title' style='color:#ef4444;'>Fatigue & Injury Warnings</div>
+                    <div class='nx-card-body' style='color: #fca5a5;'>{result.get('fatigue', '')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            elif analysis_type == "player_hud":
+                st.json(result) # الاحتفاظ ببيانات اللاعب كـ JSON في صفحة اللاعبين
+
+    if st.button(t("refresh"), key=f"refresh_{analysis_type}"): 
+        st.rerun()
 
 def page_players():
     st.markdown(f"<div class='nx-title'>{t('p2_title')}</div>", unsafe_allow_html=True)
