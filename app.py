@@ -732,7 +732,6 @@ def _render_jobs(client, analysis_type):
         status = j["status"]
         result = j.get("result") or {}
         
-        # تخطي البيانات القديمة التي لا تنتمي لهذا القسم
         if status == "completed":
             if analysis_type == "opponent_report" and "weaknesses" not in result: continue
             if analysis_type == "error_report" and "positioning_errors" not in result: continue
@@ -776,7 +775,7 @@ def _render_jobs(client, analysis_type):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                   elif analysis_type == "player_hud":
+            elif analysis_type == "player_hud":
                 st.markdown(f"""
                 <div class='nx-card' style='border-left:4px solid #00ffcc;'>
                     <div class='nx-card-title' style='color:#00ffcc;'>Player Performance Summary</div>
