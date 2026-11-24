@@ -25,6 +25,38 @@ except ImportError:
 
 load_dotenv()
 st.set_page_config(page_title="Omnia DeepArena NexIA", page_icon="⚽", layout="wide", initial_sidebar_state="expanded")
+st.markdown("""
+    <style>
+        /* جعل خلفية الشريط العلوي شفافة حتى لا يغطي العناوين */
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+        }
+
+        /* إخفاء زر Share وقائمة النقاط الثلاث وأيقونة GitHub */
+        div[data-testid="stToolbar"] {
+            visibility: hidden !important;
+            display: none !important;
+        }
+
+        /* إخفاء شريط التزيين العلوي */
+        div[data-testid="stDecoration"] {
+            display: none !important;
+        }
+
+        /* إبقاء زر فتح القائمة الجانبية ظاهراً وواضحاً */
+        button[data-testid="stExpandSidebarButton"],
+        div[data-testid="collapsedControl"] {
+            visibility: visible !important;
+            display: block !important;
+            color: #00FFA3 !important; /* نفس اللون الأخضر في تطبيقك */
+        }
+
+        /* تعديل الهامش العلوي للمحتوى */
+        .block-container {
+            padding-top: 2.5rem !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
