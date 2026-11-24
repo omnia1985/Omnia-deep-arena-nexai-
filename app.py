@@ -235,7 +235,7 @@ h1, h2, h3, h4 { color: #f8fafc !important; font-weight: 800; }
 .stProgress > div > div > div > div { background: linear-gradient(90deg, #00ffcc, #f59e0b) !important; }
 #MainMenu {visibility: hidden;}
 
-header {visibility: hidden;}
+
 </style>
 """
 if st.session_state.lang == "AR": CSS += "<style>[data-testid='stAppViewContainer'],[data-testid='stSidebar']{direction:rtl;}</style>"
