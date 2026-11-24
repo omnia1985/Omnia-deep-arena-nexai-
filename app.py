@@ -234,7 +234,7 @@ h1, h2, h3, h4 { color: #f8fafc !important; font-weight: 800; }
 [data-testid="stExpander"] { background: #111827; border: 1px solid rgba(0,255,204,0.14) !important; border-radius: 12px !important; }
 .stProgress > div > div > div > div { background: linear-gradient(90deg, #00ffcc, #f59e0b) !important; }
 #MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
+
 header {visibility: hidden;}
 </style>
 """
