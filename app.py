@@ -649,7 +649,7 @@ def page_predictor():
     
     st.markdown("<hr/>", unsafe_allow_html=True)
     
-    with st.expander(f"📊 Compare: Poisson Model vs Live Odds", expanded=True):
+    with st.expander(f"📊 Compare: Poisson Model vs Live market data", expanded=True):
         st.bar_chart(pd.DataFrame({"Outcome": [t("win"), t("draw"), t("loss")], "Probability (%)": [s["win"], s["draw"], s["loss"]]}), x="Outcome", y="Probability (%)")
 
     with st.expander(f"⚔️ Attacking Power: {home_name} vs {away_name}", expanded=False):
