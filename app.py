@@ -233,6 +233,9 @@ h1, h2, h3, h4 { color: #f8fafc !important; font-weight: 800; }
 .stButton > button:disabled { background: #1f2937 !important; color: #6b7280 !important; }
 [data-testid="stExpander"] { background: #111827; border: 1px solid rgba(0,255,204,0.14) !important; border-radius: 12px !important; }
 .stProgress > div > div > div > div { background: linear-gradient(90deg, #00ffcc, #f59e0b) !important; }
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
 </style>
 """
 if st.session_state.lang == "AR": CSS += "<style>[data-testid='stAppViewContainer'],[data-testid='stSidebar']{direction:rtl;}</style>"
