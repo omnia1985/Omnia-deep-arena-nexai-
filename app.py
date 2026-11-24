@@ -27,28 +27,29 @@ load_dotenv()
 st.set_page_config(page_title="Omnia DeepArena NexIA", page_icon="⚽", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
     <style>
-        /* جعل خلفية الشريط العلوي شفافة حتى لا يغطي العناوين */
+        /* جعل الشريط العلوي شفافاً حتى لا يغطي النصوص */
         header[data-testid="stHeader"] {
             background: transparent !important;
         }
 
-        /* إخفاء زر Share وقائمة النقاط الثلاث وأيقونة GitHub */
-        div[data-testid="stToolbar"] {
-            visibility: hidden !important;
-            display: none !important;
-        }
-
-        /* إخفاء شريط التزيين العلوي */
+        /* إخفاء شريط التزيين الملون في الأعلى */
         div[data-testid="stDecoration"] {
             display: none !important;
         }
 
-        /* إبقاء زر فتح القائمة الجانبية ظاهراً وواضحاً */
+        /* إخفاء زر Share وقائمة النقاط الثلاث وأيقونة GitHub تحديداً */
+        div[data-testid="stAppDeployButton"],
+        div[data-testid="stToolbarActions"],
+        span[data-testid="stMainMenu"] {
+            display: none !important;
+        }
+
+        /* إبقاء زر فتح القائمة الجانبية ظاهراً وواضحاً بلون التطبيق */
         button[data-testid="stExpandSidebarButton"],
-        div[data-testid="collapsedControl"] {
+        div[data-testid="stSidebarCollapsedControl"] {
             visibility: visible !important;
-            display: block !important;
-            color: #00FFA3 !important; /* نفس اللون الأخضر في تطبيقك */
+            display: flex !important;
+            color: #00FFA3 !important;
         }
 
         /* تعديل الهامش العلوي للمحتوى */
@@ -57,6 +58,7 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
 
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
