@@ -447,7 +447,7 @@ def page_predictor():
     client = get_client()
     is_admin = (st.session_state.user_email == "alibejaoui981@gmail.com")
     
-    st.markdown("### 📑 Weekly VIP Predictions (Document)")
+    st.markdown("### 📑 Weekly Premium Insights (Document)")
     if is_admin:
         st.info("👑 Admin Area: Upload the weekly picks document here.")
         uploaded_doc = st.file_uploader("Upload Weekly Picks (PDF or Image)", type=["pdf", "png", "jpg", "jpeg"])
