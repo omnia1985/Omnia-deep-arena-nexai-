@@ -6,3 +6,4 @@ pandas>=2.0.0
 huggingface_hub>=0.20.0
 requests>=2.31.0
 stripe>=8.0.0
+Flask>=3.0.0
