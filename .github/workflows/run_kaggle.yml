@@ -1,5 +1,4 @@
 name: Trigger Kaggle GPU Analysis
-
 on:
   schedule:
     - cron: '*/30 * * * *'
