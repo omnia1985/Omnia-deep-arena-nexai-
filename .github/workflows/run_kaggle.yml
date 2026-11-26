@@ -1,1 +1,29 @@
+name: Trigger Kaggle GPU Analysis
 
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [new_video_uploaded]
+
+jobs:
+  run-notebook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Kaggle CLI
+        run: pip install kaggle
+
+      - name: Pull and Trigger Kaggle Notebook
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p /tmp/kaggle_nb
+          kaggle kernels pull alibejaoui1985/notebookf402352ee0 -p /tmp/kaggle_nb -m
+          kaggle kernels push -p /tmp/kaggle_nb
