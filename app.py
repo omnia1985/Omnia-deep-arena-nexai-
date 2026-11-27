@@ -748,7 +748,15 @@ def _upload_video(client, file, kind, analysis_type):
         "type": analysis_type, 
         "status": "queued"
     }).execute()
-    
+        # إرسال إشارة إلى GitHub Actions لبدء Kaggle فوراً
+    try:
+        github_token = os.getenv("GITHUB_TOKEN")
+        repo = "omnia1985/Omnia-deep-arena-nexai-"
+        url = f"https://api.github.com/repos/{repo}/actions/workflows/run_kaggle.yml/dispatches"
+        headers = {"Authorization": f"token {github_token}", "Accept": "application/vnd.github.v3+json"}
+        requests.post(url, headers=headers, json={"ref": "main"}, timeout=5)
+    except Exception:
+        pass
     return up
 
 def _render_jobs(client, analysis_type):
